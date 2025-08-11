@@ -12,7 +12,7 @@ import {
 import { Bell, HelpCircle, ExternalLink } from "lucide-react";
 import { useAppStore } from "../store";
 import { UserPreferences } from "../types";
-import { useTheme } from "../hooks/useTheme";
+// import { useTheme } from "../hooks/useTheme";
 import Layout from "../components/Layout";
 import NotificationStatus from "../components/NotificationStatus";
 import { pwaService } from "../lib/pwa";
@@ -29,7 +29,7 @@ const Settings = () => {
     clearAllData,
   } = useAppStore();
 
-  const { themeMode, setTheme } = useTheme();
+  // const { themeMode, setTheme } = useTheme();
   const [localPreferences, setLocalPreferences] =
     useState<UserPreferences>(userPreferences);
   const [showClearModal, setShowClearModal] = useState(false);
@@ -101,23 +101,23 @@ const Settings = () => {
     { label: "2小时前", value: 120 },
   ];
 
-  // 主题选项
-  const themeOptions = [
-    { label: "跟随系统", value: "system" },
-    { label: "浅色模式", value: "light" },
-    { label: "深色模式", value: "dark" },
-  ];
+  // // 主题选项
+  // const themeOptions = [
+  //   { label: "跟随系统", value: "system" },
+  //   { label: "浅色模式", value: "light" },
+  //   { label: "深色模式", value: "dark" },
+  // ];
 
-  // 处理主题变更
-  const handleThemeChange = (value: string[]) => {
-    const newTheme = value[0] as "light" | "dark" | "system";
-    setTheme(newTheme);
-    // 同时更新用户偏好设置
-    handlePreferenceChange({
-      ...localPreferences,
-      theme: newTheme === "system" ? "auto" : newTheme,
-    });
-  };
+  // // 处理主题变更
+  // const handleThemeChange = (value: string[]) => {
+  //   const newTheme = value[0] as "light" | "dark" | "system";
+  //   setTheme(newTheme);
+  //   // 同时更新用户偏好设置
+  //   handlePreferenceChange({
+  //     ...localPreferences,
+  //     theme: newTheme === "system" ? "auto" : newTheme,
+  //   });
+  // };
 
 
   // 获取统计信息

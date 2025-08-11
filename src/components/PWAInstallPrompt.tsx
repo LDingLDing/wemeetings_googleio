@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Modal } from 'antd-mobile';
-import { DownlandOutline, CloseOutline } from 'antd-mobile-icons';
+import { DownlandOutline } from 'antd-mobile-icons';
 import { pwaService } from '../lib/pwa';
 
 interface PWAInstallPromptProps {

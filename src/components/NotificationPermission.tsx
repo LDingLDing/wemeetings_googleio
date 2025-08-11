@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Modal, Toast } from 'antd-mobile';
 import { pwaService } from '../lib/pwa';
+import {BellOutline} from 'antd-mobile-icons';
 
 interface NotificationPermissionProps {
   onPermissionGranted?: () => void;
@@ -99,6 +100,7 @@ const NotificationPermission: React.FC<NotificationPermissionProps> = ({
         <div className="text-center py-4">
           <div className="mb-4">
             <div className="w-16 h-16 mx-auto mb-3 bg-orange-100 dark:bg-orange-900 rounded-full flex items-center justify-center">
+              <BellOutline />
             </div>
             <h3 className="text-lg font-semibold mb-2 text-gray-900 dark:text-gray-100">
               不错过任何重要会议

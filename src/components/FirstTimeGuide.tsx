@@ -21,7 +21,7 @@ const FirstTimeGuide: React.FC<FirstTimeGuideProps> = ({ visible, onClose }) => 
 
   const steps = [
     {
-      title: '欢迎使用会议助手',
+      title: '欢迎使用大会助手',
       icon: <Calendar className="w-16 h-16 text-blue-500 mx-auto mb-4" />,
       content: (
         <div className="text-center">
@@ -29,15 +29,15 @@ const FirstTimeGuide: React.FC<FirstTimeGuideProps> = ({ visible, onClose }) => 
             这是一个专为开发者大会设计的智能会议管理应用
           </p>
           <div className="space-y-2 text-sm text-gray-500 dark:text-gray-400">
-            <div className="flex items-center justify-center">
+            <div className="flex items-center">
               <CheckCircle className="w-4 h-4 text-green-500 mr-2" />
               <span>浏览和预约感兴趣的会议</span>
             </div>
-            <div className="flex items-center justify-center">
+            <div className="flex items-center">
               <CheckCircle className="w-4 h-4 text-green-500 mr-2" />
               <span>智能提醒，不错过重要会议</span>
             </div>
-            <div className="flex items-center justify-center">
+            <div className="flex items-center">
               <CheckCircle className="w-4 h-4 text-green-500 mr-2" />
               <span>离线访问，随时随地使用</span>
             </div>
@@ -194,21 +194,21 @@ const FirstTimeGuide: React.FC<FirstTimeGuideProps> = ({ visible, onClose }) => 
           </div>
 
           {/* 操作按钮 */}
-          <div className="flex justify-between items-center mt-8">
+          <div className="flex flex-wrap justify-between items-center gap-3 mt-8">
             <Button
               fill="outline"
-              size="small"
               onClick={handleSkip}
-              className="text-gray-500"
+              className="text-gray-500 flex-shrink-0"
             >
               跳过引导
             </Button>
 
-            <div className="flex space-x-3">
+            <div className="flex flex-wrap gap-3 min-w-0">
               {currentStep > 0 && (
                 <Button
                   fill="outline"
                   onClick={handlePrev}
+                  className="flex-shrink-0"
                 >
                   上一步
                 </Button>
@@ -216,15 +216,15 @@ const FirstTimeGuide: React.FC<FirstTimeGuideProps> = ({ visible, onClose }) => 
               <Button
                 color="primary"
                 onClick={handleNext}
-                className="flex items-center"
+                className="flex items-center flex-shrink-0"
               >
                 {currentStep === steps.length - 1 ? (
                   '开始使用'
                 ) : (
-                  <>
+                  <span className="flex items-center">
                     下一步
                     <ArrowRight className="w-4 h-4 ml-1" />
-                  </>
+                  </span>
                 )}
               </Button>
             </div>

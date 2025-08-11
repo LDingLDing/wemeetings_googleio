@@ -1,0 +1,41 @@
+{
+  "name": "谷歌开发者大会会议预约助手",
+  "short_name": "会议预约",
+  "description": "帮助您管理谷歌开发者大会的会议行程，避免时间冲突",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#1890ff",
+  "orientation": "portrait",
+  "scope": "/",
+  "lang": "zh-CN",
+  "categories": ["productivity", "business"],
+  "icons": [
+    {
+      "src": "/icon-192x192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "maskable any"
+    },
+    {
+      "src": "/icon-512x512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable any"
+    }
+  ],
+  "screenshots": [
+    {
+      "src": "/screenshot-mobile.png",
+      "sizes": "390x844",
+      "type": "image/png",
+      "form_factor": "narrow"
+    }
+  ],
+  "features": [
+    "Cross Platform",
+    "fast",
+    "simple"
+  ],
+  "prefer_related_applications": false
+}

@@ -1,0 +1,9 @@
+<svg width="192" height="192" viewBox="0 0 192 192" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <rect width="192" height="192" rx="24" fill="#1890ff"/>
+  <path d="M48 96C48 69.49 69.49 48 96 48C122.51 48 144 69.49 144 96C144 122.51 122.51 144 96 144C69.49 144 48 122.51 48 96Z" fill="white"/>
+  <path d="M96 72C83.85 72 74 81.85 74 94V98C74 110.15 83.85 120 96 120C108.15 120 118 110.15 118 98V94C118 81.85 108.15 72 96 72Z" fill="#1890ff"/>
+  <circle cx="88" cy="88" r="4" fill="white"/>
+  <circle cx="104" cy="88" r="4" fill="white"/>
+  <path d="M84 104C84 104 88 108 96 108C104 108 108 104 108 104" stroke="white" stroke-width="2" stroke-linecap="round"/>
+  <text x="96" y="160" text-anchor="middle" fill="white" font-family="Arial, sans-serif" font-size="16" font-weight="bold">会议</text>
+</svg>

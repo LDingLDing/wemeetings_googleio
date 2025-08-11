@@ -1,0 +1,44 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+    <title>谷歌开发者大会会议预约助手</title>
+    
+    <!-- PWA Manifest -->
+    <link rel="manifest" href="/manifest.json" />
+    
+    <!-- iOS PWA 支持 -->
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+    <meta name="apple-mobile-web-app-title" content="会议预约" />
+    <link rel="apple-touch-icon" href="/icon-192x192.png" />
+    
+    <!-- Android PWA 支持 -->
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="theme-color" content="#1890ff" />
+    
+    <!-- SEO 优化 -->
+    <meta name="description" content="帮助您管理谷歌开发者大会的会议行程，避免时间冲突" />
+    <meta name="keywords" content="谷歌开发者大会,会议预约,行程管理,时间冲突检测" />
+    <meta name="author" content="Google I/O Connect China" />
+    
+    <!-- 防止缩放 -->
+    <meta name="format-detection" content="telephone=no" />
+    <meta name="msapplication-tap-highlight" content="no" />
+    <script type="module">
+      if (import.meta.hot?.on) {
+        import.meta.hot.on('vite:error', (error) => {
+          if (error.err) {
+            console.error([error.err.message, error.err.frame].filter(Boolean).join('\n'));
+          }
+        });
+      }
+    </script>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>

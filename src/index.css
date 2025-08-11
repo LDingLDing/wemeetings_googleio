@@ -1,0 +1,460 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  /* 优化的系统字体栈，优先使用各平台原生字体 */
+  font-family: 
+    /* iOS 系统字体 */
+    -apple-system,
+    /* iOS Safari */
+    BlinkMacSystemFont,
+    /* Android 系统字体 */
+    "Roboto",
+    /* Android Chrome */
+    "Droid Sans",
+    /* Windows 系统字体 */
+    "Segoe UI",
+    /* 中文字体支持 */
+    "PingFang SC",
+    "Hiragino Sans GB",
+    "Microsoft YaHei",
+    "WenQuanYi Micro Hei",
+    /* 通用后备字体 */
+    "Helvetica Neue",
+    Helvetica,
+    Arial,
+    sans-serif,
+    /* Emoji 字体 */
+    "Apple Color Emoji",
+    "Segoe UI Emoji",
+    "Noto Color Emoji";
+  
+  line-height: 1.5;
+  font-weight: 400;
+  
+  /* 字体渲染优化 */
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  
+  /* 移动端字体优化 */
+  -webkit-text-size-adjust: 100%;
+  -ms-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+}
+
+/* 浅色模式样式 */
+.light {
+  --background: #ffffff;
+  --foreground: #000000;
+  --card: #ffffff;
+  --card-foreground: #000000;
+  --primary: #1890ff;
+  --primary-foreground: #ffffff;
+  --secondary: #f5f5f5;
+  --secondary-foreground: #000000;
+  --muted: #f5f5f5;
+  --muted-foreground: #666666;
+  --border: #d9d9d9;
+}
+
+/* 深色模式样式 */
+.dark {
+  --background: #0f0f0f;
+  --foreground: #f5f5f5;
+  --card: #1a1a1a;
+  --card-foreground: #f5f5f5;
+  --primary: #1890ff;
+  --primary-foreground: #ffffff;
+  --secondary: #262626;
+  --secondary-foreground: #f5f5f5;
+  --muted: #262626;
+  --muted-foreground: #b3b3b3;
+  --border: #404040;
+}
+
+/* 应用主题变量到body */
+body {
+  background-color: var(--background);
+  color: var(--foreground);
+  transition: background-color 0.3s ease, color 0.3s ease;
+}
+
+/* 深色模式下的特定样式 */
+.dark .bg-white {
+  background-color: var(--card) !important;
+}
+
+.dark .bg-gray-50 {
+  background-color: var(--background) !important;
+}
+
+.dark .bg-gray-100 {
+  background-color: var(--secondary) !important;
+}
+
+.dark .bg-blue-50 {
+  background-color: rgba(24, 144, 255, 0.1) !important;
+}
+
+.dark .bg-green-50 {
+  background-color: rgba(82, 196, 26, 0.1) !important;
+}
+
+.dark .bg-orange-50 {
+  background-color: rgba(250, 140, 22, 0.1) !important;
+}
+
+.dark .bg-red-50 {
+  background-color: rgba(245, 34, 45, 0.1) !important;
+}
+
+.dark .text-gray-800 {
+  color: var(--foreground) !important;
+}
+
+.dark .text-gray-700 {
+  color: var(--card-foreground) !important;
+}
+
+.dark .text-gray-600 {
+  color: var(--muted-foreground) !important;
+}
+
+.dark .text-gray-500 {
+  color: var(--muted-foreground) !important;
+}
+
+.dark .text-gray-400 {
+  color: #9ca3af !important;
+}
+
+.dark .text-blue-600 {
+  color: #60a5fa !important;
+}
+
+.dark .text-green-600 {
+  color: #34d399 !important;
+}
+
+.dark .text-orange-600 {
+  color: #fb923c !important;
+}
+
+.dark .text-orange-700 {
+  color: #f97316 !important;
+}
+
+.dark .border-gray-200 {
+  border-color: var(--border) !important;
+}
+
+.dark .border-orange-200 {
+  border-color: rgba(250, 140, 22, 0.3) !important;
+}
+
+.dark .shadow-sm {
+  box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.3) !important;
+}
+
+.dark .shadow-lg {
+  box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.3), 0 4px 6px -2px rgba(0, 0, 0, 0.2) !important;
+}
+
+.dark .shadow-md {
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.3), 0 2px 4px -1px rgba(0, 0, 0, 0.2) !important;
+}
+
+/* Ant Design Mobile 组件深色模式适配 */
+.dark .adm-card {
+  background-color: var(--card) !important;
+  border-color: var(--border) !important;
+  color: var(--card-foreground) !important;
+}
+
+.dark .adm-card .adm-card-header {
+  color: var(--card-foreground) !important;
+}
+
+.dark .adm-card .adm-card-body {
+  color: var(--card-foreground) !important;
+}
+
+.dark .adm-list {
+  background-color: var(--card) !important;
+}
+
+.dark .adm-list-item {
+  background-color: var(--card) !important;
+  border-color: var(--border) !important;
+}
+
+.dark .adm-list-item:not(:last-child) {
+  border-bottom: 1px solid var(--border) !important;
+}
+
+.dark .adm-list-item-content {
+  border-color: var(--border) !important;
+}
+
+.dark .adm-list-item-content {
+  color: var(--card-foreground) !important;
+}
+
+.dark .adm-list-item-content-prefix {
+  color: var(--muted-foreground) !important;
+}
+
+.dark .adm-list-item-content-extra {
+  color: var(--muted-foreground) !important;
+}
+
+.dark .adm-tabs {
+  background-color: var(--card) !important;
+}
+
+.dark .adm-tabs-tab {
+  color: var(--muted-foreground) !important;
+}
+
+.dark .adm-tabs-tab-active {
+  color: var(--primary) !important;
+  font-weight: 600 !important;
+}
+
+.dark .adm-search-bar {
+  background-color: var(--secondary) !important;
+  border: 1px solid var(--border) !important;
+}
+
+.dark .adm-search-bar-input {
+  background-color: var(--secondary) !important;
+  color: var(--foreground) !important;
+  border: none !important;
+}
+
+.dark .adm-search-bar-input::placeholder {
+  color: var(--muted-foreground) !important;
+}
+
+.dark .adm-search-bar-dark {
+  background-color: var(--secondary) !important;
+  border: 1px solid var(--border) !important;
+}
+
+.dark .adm-search-bar-dark .adm-search-bar-input {
+  background-color: var(--secondary) !important;
+  color: var(--foreground) !important;
+}
+
+.dark .adm-button {
+  border-color: var(--border) !important;
+}
+
+.dark .adm-button-fill-outline {
+  background-color: transparent !important;
+  color: var(--foreground) !important;
+  border-color: var(--border) !important;
+}
+
+.dark .adm-tag {
+  background-color: var(--secondary) !important;
+  color: var(--secondary-foreground) !important;
+}
+
+.dark .adm-modal {
+  background-color: var(--card) !important;
+}
+
+.dark .adm-modal-header {
+  color: var(--card-foreground) !important;
+  border-color: var(--border) !important;
+}
+
+.dark .adm-modal-body {
+  color: var(--card-foreground) !important;
+}
+
+.dark .adm-modal-footer {
+  border-color: var(--border) !important;
+}
+
+.dark .adm-selector {
+  background-color: var(--card) !important;
+}
+
+.dark .adm-selector-option {
+  background-color: var(--card) !important;
+  color: var(--card-foreground) !important;
+  border-color: var(--border) !important;
+}
+
+.dark .adm-selector-option-active {
+  background-color: var(--primary) !important;
+  color: var(--primary-foreground) !important;
+}
+
+.dark .selector-dark .adm-selector-option {
+  background-color: var(--card) !important;
+  color: var(--card-foreground) !important;
+  border: 1px solid var(--border) !important;
+}
+
+.dark .selector-dark .adm-selector-option:hover {
+  background-color: var(--secondary) !important;
+}
+
+.dark .selector-dark .adm-selector-option-active {
+  background-color: var(--primary) !important;
+  color: var(--primary-foreground) !important;
+  border-color: var(--primary) !important;
+}
+
+.dark .adm-nav-bar {
+  background-color: var(--card) !important;
+  border-color: var(--border) !important;
+}
+
+.dark .adm-nav-bar-title {
+  color: var(--card-foreground) !important;
+  font-weight: 600 !important;
+}
+
+.dark .adm-nav-bar-back-arrow {
+  color: var(--card-foreground) !important;
+}
+
+.dark .adm-empty {
+  color: var(--muted-foreground) !important;
+}
+
+.dark .adm-empty-description {
+  color: var(--muted-foreground) !important;
+}
+
+.dark .adm-divider {
+  border-color: var(--border) !important;
+}
+
+.dark .adm-swipe-action {
+  background-color: var(--card) !important;
+}
+
+.dark .adm-pull-to-refresh {
+  background-color: var(--background) !important;
+}
+
+/* 自定义组件深色模式适配 */
+.dark .sticky {
+  background-color: var(--card) !important;
+}
+
+.dark .space-y-3 > * + * {
+  border-color: var(--border) !important;
+}
+
+.dark .space-y-4 > * + * {
+  border-color: var(--border) !important;
+}
+
+/* 设置页面深色模式样式 */
+.dark .adm-button-primary {
+  background-color: var(--secondary) !important;
+  color: var(--foreground) !important;
+  border-color: var(--border) !important;
+}
+
+.dark .adm-button-primary:hover {
+  background-color: var(--muted) !important;
+}
+
+.dark .adm-list-item:not(:last-child)::after {
+  background-color: var(--border) !important;
+}
+
+.dark .border-t {
+  border-color: var(--border) !important;
+}
+
+.dark .border-b {
+  border-color: var(--border) !important;
+}
+
+.dark .border-gray-700 {
+  border-color: var(--border) !important;
+}
+
+/* 筛选弹窗深色模式样式 */
+.dark .filter-selector {
+  --border: 1px solid #4b5563 !important;
+  --background: #374151 !important;
+  --text-color: white !important;
+}
+
+.dark .filter-selector .adm-selector-item {
+  background-color: #374151 !important;
+  color: white !important;
+  border-color: #4b5563 !important;
+}
+
+.dark .filter-selector .adm-selector-item-active {
+  background-color: #1890ff !important;
+  color: white !important;
+}
+
+/* 搜索栏深色模式样式 */
+.dark .adm-search-bar-dark {
+  --background: #374151 !important;
+  --border: 1px solid #4b5563 !important;
+  --text-color: white !important;
+  --placeholder-text-color: #9ca3af !important;
+}
+
+.dark .adm-search-bar-dark .adm-search-bar-input {
+  background-color: #374151 !important;
+  color: white !important;
+}
+
+.dark .adm-search-bar-dark .adm-search-bar-input::placeholder {
+  color: #9ca3af !important;
+}
+
+.dark .adm-search-bar-dark .adm-search-bar-clear {
+  color: #9ca3af !important;
+}
+
+/* MySchedule页面按钮深色模式样式 */
+.dark .adm-button-fill-outline {
+  background-color: #4b5563 !important;
+  color: #f9fafb !important;
+  border-color: #6b7280 !important;
+}
+
+.dark .adm-button-fill-outline:hover {
+  background-color: #6b7280 !important;
+  color: #ffffff !important;
+}
+
+.dark .adm-button-fill-outline:active {
+  background-color: #374151 !important;
+  color: #ffffff !important;
+}
+
+/* 危险按钮深色模式样式 */
+.dark .adm-button-danger.adm-button-fill-outline {
+  background-color: #7f1d1d !important;
+  color: #fecaca !important;
+  border-color: #dc2626 !important;
+}
+
+.dark .adm-button-danger.adm-button-fill-outline:hover {
+  background-color: #991b1b !important;
+  color: #ffffff !important;
+}
+
+.dark .adm-button-danger.adm-button-fill-outline:active {
+  background-color: #7f1d1d !important;
+  color: #ffffff !important;
+}

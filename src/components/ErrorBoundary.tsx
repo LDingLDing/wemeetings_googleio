@@ -65,15 +65,19 @@ class ErrorBoundary extends Component<Props, State> {
                   onClick={this.handleReload}
                   className="mb-2"
                 >
-                  <RefreshCw/>
-                  刷新页面
+                  <span className="flex items-center justify-center">
+                    <RefreshCw className="w-6 h-6 mr-2" />
+                    刷新页面
+                  </span>
                 </Button>
                 <Button 
                   block 
                   fill="outline" 
                   onClick={this.handleReset}
                 >
-                  重试
+                  <span className="flex items-center justify-center">
+                    重试
+                  </span>
                 </Button>
               </div>
             </div>

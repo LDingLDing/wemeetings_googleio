@@ -14,7 +14,7 @@ const LoadingScreen = () => {
             2025 Google开发者大会
           </h1>
           <p className="text-gray-600">
-            会议预约管理系统
+            大会预约管理系统
           </p>
         </div>
         

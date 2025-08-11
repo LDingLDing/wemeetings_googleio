@@ -7,7 +7,6 @@ import {
   Card,
   Modal,
   Toast,
-  Button,
 } from "antd-mobile";
 import { Bell, HelpCircle, ExternalLink } from "lucide-react";
 import { useAppStore } from "../store";
@@ -15,8 +14,6 @@ import { UserPreferences } from "../types";
 // import { useTheme } from "../hooks/useTheme";
 import Layout from "../components/Layout";
 import NotificationStatus from "../components/NotificationStatus";
-import { pwaService } from "../lib/pwa";
-import { audioService } from "../lib/audioService";
 import { reminderService } from "../lib/reminderService";
 
 const Settings = () => {
@@ -222,81 +219,9 @@ const Settings = () => {
                             })
                           }
                         />
-                        {localPreferences.enableSound && (
-                          <Button
-                            size="small"
-                            fill="none"
-                            onClick={async () => {
-                              try {
-                                await audioService.testSound();
-                                Toast.show('测试声音播放成功');
-                              } catch (error) {
-                                Toast.show('声音播放失败，请检查设备音量');
-                                console.error(error)
-                              }
-                            }}
-                            className="text-xs text-blue-600 dark:text-blue-400"
-                          >
-                            测试
-                          </Button>
-                        )}
+
               
-              {/* 测试通知功能 */}
-              {localPreferences.notificationEnabled && (
-                <List.Item>
-                  <div className="space-y-3">
-                    <div className="text-sm font-medium text-gray-700 dark:text-gray-300">
-                      测试通知功能
-                    </div>
-                    <div className="flex space-x-2">
-                      <Button
-                        size="small"
-                        color="primary"
-                        onClick={async () => {
-                          try {
-                            await pwaService.testNotification({
-                              enableSound: localPreferences.enableSound,
-                              enableVibration: localPreferences.enableVibration
-                            });
-                            Toast.show('测试通知已发送');
-                          } catch (error) {
-                            Toast.show('发送测试通知失败，请检查通知权限');
-                            console.error(error)
-                          }
-                        }}
-                      >
-                        发送测试通知
-                      </Button>
-                      <Button
-                        size="small"
-                        fill="outline"
-                        onClick={async () => {
-                          try {
-                            await pwaService.sendMeetingReminder(
-                              '测试会议',
-                              '2025-01-20 14:00',
-                              15,
-                              {
-                                enableSound: localPreferences.enableSound,
-                                enableVibration: localPreferences.enableVibration
-                              }
-                            );
-                            Toast.show('会议提醒测试已发送');
-                          } catch (error) {
-                            Toast.show('发送会议提醒失败');
-                            console.error(error)
-                          }
-                        }}
-                      >
-                        测试会议提醒
-                      </Button>
-                    </div>
-                    <p className="text-xs text-gray-500 dark:text-gray-400">
-                      测试通知功能是否正常工作，包括声音和震动效果
-                    </p>
-                  </div>
-                </List.Item>
-              )}
+
                       </div>
                     }
                   >

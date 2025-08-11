@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { NavBar, Card, Collapse, Space, Tag } from 'antd-mobile';
+import { NavBar, Card, Collapse, Space, Tag, Button, Toast } from 'antd-mobile';
 import { useNavigate } from 'react-router-dom';
 import {
   Calendar,
@@ -16,10 +16,14 @@ import {
   ExternalLink
 } from 'lucide-react';
 import Layout from '../components/Layout';
+import { pwaService } from '../lib/pwa';
+import { audioService } from '../lib/audioService';
+import { useAppStore } from '../store';
 
 const Help = () => {
   const navigate = useNavigate();
   const [activeKey, setActiveKey] = useState<string[]>([]);
+  const { userPreferences } = useAppStore();
 
   const faqData = [
     {
@@ -200,12 +204,6 @@ const Help = () => {
 
   const quickActions = [
     {
-      title: '测试通知',
-      description: '发送测试通知检查功能',
-      icon: <Bell className="w-6 h-6 text-orange-500" />,
-      action: () => navigate('/settings')
-    },
-    {
       title: '查看设置',
       description: '管理应用偏好设置',
       icon: <Settings className="w-6 h-6 text-gray-500" />,
@@ -273,6 +271,86 @@ const Help = () => {
               </div>
             </div>
           </Card>
+
+          {/* 测试功能 */}
+          {userPreferences?.notificationEnabled && (
+            <Card className="shadow-sm">
+              <div className="space-y-3">
+                <h2 className="text-lg font-semibold text-gray-800 dark:text-gray-100 mb-3">
+                  🔔 测试功能
+                </h2>
+                <div className="space-y-3">
+                  <div className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                    测试通知功能
+                  </div>
+                  <div className="flex flex-wrap gap-2">
+                     <Button
+                       size="small"
+                       color="primary"
+                       onClick={async () => {
+                         try {
+                           await pwaService.testNotification({
+                             enableSound: userPreferences?.enableSound,
+                             enableVibration: userPreferences?.enableVibration
+                           });
+                           Toast.show('测试通知已发送');
+                         } catch (error) {
+                           Toast.show('发送测试通知失败，请检查通知权限');
+                           console.error(error)
+                         }
+                       }}
+                     >
+                       发送测试通知
+                     </Button>
+                     <Button
+                       size="small"
+                       fill="outline"
+                       onClick={async () => {
+                         try {
+                           await pwaService.sendMeetingReminder(
+                             '测试会议',
+                             '2025-01-20 14:00',
+                             15,
+                             {
+                               enableSound: userPreferences?.enableSound,
+                               enableVibration: userPreferences?.enableVibration
+                             }
+                           );
+                           Toast.show('会议提醒测试已发送');
+                         } catch (error) {
+                           Toast.show('发送会议提醒失败');
+                           console.error(error)
+                         }
+                       }}
+                     >
+                       测试会议提醒
+                     </Button>
+                     {userPreferences?.enableSound && (
+                       <Button
+                         size="small"
+                         fill="outline"
+                         onClick={async () => {
+                           try {
+                             await audioService.testSound();
+                             Toast.show('测试声音播放成功');
+                           } catch (error) {
+                             Toast.show('声音播放失败，请检查设备音量');
+                             console.error(error)
+                           }
+                         }}
+                         className="text-blue-600 dark:text-blue-400"
+                       >
+                         测试声音
+                       </Button>
+                     )}
+                   </div>
+                  <p className="text-xs text-gray-500 dark:text-gray-400">
+                    测试通知功能是否正常工作，包括声音和震动效果
+                  </p>
+                </div>
+              </div>
+            </Card>
+          )}
 
           {/* 常见问题 */}
           <Card className="shadow-sm">

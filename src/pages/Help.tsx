@@ -221,7 +221,7 @@ const Help = () => {
 
   return (
     <Layout>
-      <div className="bg-gray-50 dark:bg-gray-900 min-h-screen">
+      <div className="bg-gray-50 dark:bg-gray-900 min-h-screen pb-16">
         {/* 导航栏 */}
         <NavBar
           back="返回"
@@ -333,7 +333,7 @@ const Help = () => {
                 需要更多帮助？
               </h3>
               <p className="text-gray-600 dark:text-gray-300 text-sm mb-4">
-                如果您遇到其他问题，欢迎联系我们的技术支持团队
+                如果您遇到其他问题，欢迎联系我 main@aloea.cn
               </p>
               <Space>
                 <Tag color="primary">技术支持</Tag>

@@ -1,3 +1,10 @@
+// JSON数据版本控制类型定义
+export interface MeetingDataVersion {
+  version: string;
+  lastUpdated: string;
+  meetings: Meeting[];
+}
+
 // 会议数据类型定义
 export interface Meeting {
   id: string;

@@ -1,8 +1,9 @@
-import { Meeting } from '../types';
+import { Meeting, MeetingDataVersion } from '../types';
 import { DatabaseService } from './database';
 
 // 原始JSON数据接口
 interface RawMeetingData {
+  id?: string;
   标题: string;
   专场: string;
   日期: string;
@@ -16,6 +17,9 @@ interface RawMeetingData {
   }>;
 }
 
+// 版本信息存储键
+const VERSION_STORAGE_KEY = 'meeting_data_version';
+
 export class DataImportService {
   /**
    * 从JSON文件导入会议数据
@@ -25,9 +29,9 @@ export class DataImportService {
       // 清空现有数据
       await DatabaseService.clearMeetings();
       
-      // 转换数据格式并生成ID
+      // 转换数据格式，使用现有ID或生成新ID
       const meetings: Meeting[] = jsonData.map((rawMeeting, index) => ({
-        id: `meeting-${index + 1}`,
+        id: rawMeeting.id || `meeting-${String(index + 1).padStart(3, '0')}`,
         标题: rawMeeting.标题,
         专场: rawMeeting.专场,
         日期: rawMeeting.日期,
@@ -49,6 +53,20 @@ export class DataImportService {
   }
 
   /**
+   * 获取本地存储的版本信息
+   */
+  static getStoredVersion(): string | null {
+    return localStorage.getItem(VERSION_STORAGE_KEY);
+  }
+
+  /**
+   * 设置本地存储的版本信息
+   */
+  static setStoredVersion(version: string): void {
+    localStorage.setItem(VERSION_STORAGE_KEY, version);
+  }
+
+  /**
    * 从本地JSON文件加载数据
    */
   static async loadMeetingsFromFile(): Promise<void> {
@@ -60,8 +78,20 @@ export class DataImportService {
         throw new Error('无法加载会议数据文件');
       }
       
-      const jsonData: RawMeetingData[] = await response.json();
-      await this.importMeetingsFromJSON(jsonData);
+      const jsonData = await response.json();
+      
+      // 检查是否为新格式（包含版本信息）
+      if (jsonData.version && jsonData.meetings) {
+        const meetingData: MeetingDataVersion = jsonData;
+        await this.importMeetingsFromJSON(meetingData.meetings);
+        // 更新本地版本信息
+        this.setStoredVersion(meetingData.version);
+        console.log(`数据版本: ${meetingData.version}, 更新时间: ${meetingData.lastUpdated}`);
+      } else {
+        // 兼容旧格式
+        const meetings: RawMeetingData[] = Array.isArray(jsonData) ? jsonData : [];
+        await this.importMeetingsFromJSON(meetings);
+      }
     } catch (error) {
       console.error('加载会议数据文件失败:', error);
       throw new Error('加载会议数据文件失败');
@@ -82,6 +112,31 @@ export class DataImportService {
   }
 
   /**
+   * 检查是否需要更新数据
+   */
+  static async checkForDataUpdate(): Promise<boolean> {
+    try {
+      const response = await fetch('/io_connect_china_2025_workshops.json');
+      if (!response.ok) {
+        return false;
+      }
+      
+      const jsonData = await response.json();
+      
+      // 如果JSON文件包含版本信息
+      if (jsonData.version) {
+        const storedVersion = this.getStoredVersion();
+        return storedVersion !== jsonData.version;
+      }
+      
+      return false;
+    } catch (error) {
+      console.error('检查数据更新失败:', error);
+      return false;
+    }
+  }
+
+  /**
    * 初始化应用数据
    */
   static async initializeAppData(): Promise<void> {
@@ -93,7 +148,15 @@ export class DataImportService {
         await this.loadMeetingsFromFile();
         console.log('数据初始化完成');
       } else {
-        console.log('数据库已初始化，跳过数据导入');
+        // 检查是否需要更新数据
+        const needsUpdate = await this.checkForDataUpdate();
+        if (needsUpdate) {
+          console.log('检测到数据更新，正在重新加载...');
+          await this.loadMeetingsFromFile();
+          console.log('数据更新完成');
+        } else {
+          console.log('数据库已是最新版本，跳过数据导入');
+        }
       }
     } catch (error) {
       console.error('初始化应用数据失败:', error);

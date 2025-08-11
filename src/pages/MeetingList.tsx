@@ -9,9 +9,7 @@ import {
   PullToRefresh,
   InfiniteScroll
 } from 'antd-mobile';
-import {
-  Filter,
-} from 'lucide-react';
+import { Filter, Twitter, BookOpen } from 'lucide-react';
 import { useAppStore } from '../store';
 import { Meeting, MeetingFilter } from '../types';
 import MeetingCard from '../components/MeetingCard';
@@ -132,6 +130,30 @@ const MeetingList = () => {
             2025 Google开发者大会
           </h1>
           
+          {/* 项目介绍 */}
+          <div className="mb-3">
+            <p className="text-xs text-gray-400 dark:text-gray-500 flex items-center">
+              独立开源项目，感谢支持 |
+              <a 
+                href="https://twitter.com/LuhuiDev" 
+                target="_blank" 
+                className="ml-1 hover:text-gray-600 dark:hover:text-gray-300 transition-colors flex items-center"
+              >
+                <Twitter size={12} className="mr-1" />
+                @LuhuiDev
+              </a>
+              <span className="text-xs text-gray-400 dark:text-gray-500 mx-2">|</span>
+              <a 
+                href="https://www.xiaohongshu.com/user/profile/5678ff4a50c4b4434936b793" 
+                target="_blank" 
+                className="ml-1 hover:text-gray-600 dark:hover:text-gray-300 transition-colors flex items-center"
+              >
+                <BookOpen size={12} className="mr-1" />
+                @Luhui Dev
+              </a>
+            </p>
+          </div>
+          
           {/* 搜索栏 */}
           <div className="flex items-center space-x-2">
             <div className="flex-1">
@@ -211,7 +233,7 @@ const MeetingList = () => {
                     <span className="text-gray-500 dark:text-gray-400">加载更多...</span>
                   </div>
                 ) : (
-                  <div className="text-center py-4">
+                  <div className="text-center py-4 pb-16">
                     <span className="text-gray-400 dark:text-gray-500">没有更多会议了</span>
                   </div>
                 )}

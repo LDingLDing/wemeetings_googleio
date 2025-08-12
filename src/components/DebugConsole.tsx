@@ -37,12 +37,18 @@ const DebugConsole: React.FC<DebugConsoleProps> = ({ visible, onClose }) => {
   const [isOnline, setIsOnline] = useState(navigator.onLine);
   const [activeTab, setActiveTab] = useState<'logs' | 'storage' | 'network' | 'device'>('logs');
   const logsEndRef = useRef<HTMLDivElement>(null);
+  const originalConsole = useRef<{
+    log: typeof console.log;
+    error: typeof console.error;
+    warn: typeof console.warn;
+    info: typeof console.info;
+  } | null>(null);
   const { meetings, userPreferences, loadMeetings, loadUserPreferences } = useAppStore();
 
   // 添加日志
   const addLog = (level: DebugLog['level'], message: string, data?: any) => {
     const newLog: DebugLog = {
-      id: Date.now().toString(),
+      id: `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
       timestamp: new Date().toLocaleTimeString(),
       level,
       message,
@@ -160,15 +166,272 @@ const DebugConsole: React.FC<DebugConsoleProps> = ({ visible, onClose }) => {
     try {
       addLog('info', '开始重新加载数据...');
       
-      await loadUserPreferences();
-      addLog('success', '用户偏好设置加载完成');
+      // 1. 检查IndexedDB可用性（iOS Safari兼容性）
+      addLog('info', '检查IndexedDB可用性...');
+      try {
+        const isIDBAvailable = await (await import('../lib/database')).DatabaseService.isIndexedDBAvailable();
+        if (isIDBAvailable) {
+          addLog('success', 'IndexedDB可用');
+        } else {
+          addLog('error', 'IndexedDB不可用 - iOS Safari可能处于隐私模式或存储被禁用');
+        }
+      } catch (idbError) {
+        addLog('error', 'IndexedDB检查失败', idbError);
+      }
       
-      await loadMeetings();
-      addLog('success', '会议数据加载完成');
+      // 2. 检查网络连接状态
+      addLog('info', `网络状态: ${navigator.onLine ? '在线' : '离线'}`);
+      if (!navigator.onLine) {
+        addLog('warn', '设备处于离线状态，可能影响数据加载');
+      }
+      
+      // 3. 测试JSON文件访问
+      addLog('info', '测试会议数据文件访问...');
+      try {
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 5000);
+        
+        const response = await fetch('/io_connect_china_2025_workshops.json', {
+          signal: controller.signal,
+          cache: 'no-cache',
+          headers: {
+            'Cache-Control': 'no-cache',
+            'Pragma': 'no-cache'
+          }
+        });
+        
+        clearTimeout(timeoutId);
+        
+        if (response.ok) {
+          addLog('success', `JSON文件访问成功 (状态: ${response.status})`);
+          
+          // 检查响应内容
+          const contentType = response.headers.get('content-type');
+          addLog('info', `响应类型: ${contentType || '未知'}`);
+          
+          const textData = await response.text();
+          if (textData && textData.trim()) {
+            addLog('success', `JSON文件大小: ${(textData.length / 1024).toFixed(2)} KB`);
+            
+            try {
+              const jsonData = JSON.parse(textData);
+              if (Array.isArray(jsonData)) {
+                addLog('success', `JSON解析成功，包含 ${jsonData.length} 条记录`);
+              } else if (jsonData && jsonData.meetings && Array.isArray(jsonData.meetings)) {
+                addLog('success', `JSON解析成功，版本: ${jsonData.version || '未知'}，包含 ${jsonData.meetings.length} 条记录`);
+              } else {
+                addLog('warn', 'JSON格式异常，数据结构不符合预期');
+              }
+            } catch (parseError) {
+              addLog('error', 'JSON解析失败', parseError);
+            }
+          } else {
+            addLog('error', 'JSON文件为空或无法读取内容');
+          }
+        } else {
+          addLog('error', `JSON文件访问失败 (状态: ${response.status})`);
+        }
+      } catch (fetchError) {
+        if (fetchError.name === 'AbortError') {
+          addLog('error', 'JSON文件加载超时（5秒）');
+        } else {
+          addLog('error', 'JSON文件访问异常', fetchError);
+        }
+      }
+      
+      // 4. 检查存储配额（iOS Safari限制）
+      addLog('info', '检查存储配额...');
+      try {
+        if ('storage' in navigator && 'estimate' in navigator.storage) {
+          const estimate = await navigator.storage.estimate();
+          const usedMB = ((estimate.usage || 0) / 1024 / 1024).toFixed(2);
+          const quotaMB = ((estimate.quota || 0) / 1024 / 1024).toFixed(2);
+          addLog('info', `存储使用: ${usedMB}MB / ${quotaMB}MB`);
+          
+          if (estimate.quota && estimate.usage && estimate.usage / estimate.quota > 0.8) {
+            addLog('warn', '存储空间使用率超过80%，可能影响数据写入');
+          }
+        } else {
+          addLog('warn', '无法获取存储配额信息（可能是iOS Safari限制）');
+        }
+      } catch (storageError) {
+        addLog('warn', '存储配额检查失败', storageError);
+      }
+      
+      // 5. 加载用户偏好设置
+      addLog('info', '加载用户偏好设置...');
+      try {
+        await loadUserPreferences();
+        addLog('success', '用户偏好设置加载完成');
+      } catch (prefError) {
+        addLog('error', '用户偏好设置加载失败', prefError);
+      }
+      
+      // 6. 加载会议数据（详细监控）
+      addLog('info', '开始加载会议数据...');
+      try {
+        // 检查数据库是否已初始化
+        const { DatabaseService } = await import('../lib/database');
+        const meetings = await DatabaseService.getAllMeetings();
+        
+        if (meetings.length === 0) {
+          addLog('warn', '数据库中无会议数据，尝试从JSON文件导入...');
+          
+          // 尝试导入数据
+          const { DataImportService } = await import('../lib/dataImport');
+          await DataImportService.loadMeetingsFromFile();
+          addLog('success', '会议数据导入完成');
+          
+          // 重新获取数据
+          const newMeetings = await DatabaseService.getAllMeetings();
+          addLog('success', `成功加载 ${newMeetings.length} 个会议`);
+        } else {
+          addLog('success', `从数据库加载 ${meetings.length} 个会议`);
+        }
+        
+        await loadMeetings();
+        addLog('success', '会议数据加载完成');
+      } catch (meetingError) {
+        addLog('error', '会议数据加载失败', meetingError);
+        
+        // iOS Safari特定错误分析
+        if (meetingError.message.includes('QuotaExceededError')) {
+          addLog('error', 'iOS Safari存储配额不足，建议清理浏览器数据或关闭隐私模式');
+        } else if (meetingError.message.includes('InvalidStateError')) {
+          addLog('error', 'iOS Safari数据库状态异常，建议刷新页面重试');
+        } else if (meetingError.message.includes('UnknownError')) {
+          addLog('error', 'iOS Safari数据库访问被阻止，请检查浏览器设置中的存储权限');
+        } else if (meetingError.message.includes('NetworkError')) {
+          addLog('error', 'iOS网络连接问题，请检查WiFi或移动数据连接');
+        }
+      }
       
       addLog('success', '数据重新加载完成');
     } catch (error) {
       addLog('error', '数据重新加载失败', error);
+    }
+  };
+
+  // 会议数据诊断
+  const diagnoseMeetingData = async () => {
+    try {
+      addLog('info', '开始会议数据诊断...');
+      
+      // 1. 检查JSON文件可访问性
+      addLog('info', '步骤1: 检查JSON文件可访问性');
+      try {
+        const response = await fetch('/io_connect_china_2025_workshops.json', {
+          method: 'HEAD',
+          cache: 'no-cache'
+        });
+        if (response.ok) {
+          addLog('success', '✅ JSON文件可访问');
+        } else {
+          addLog('error', `❌ JSON文件访问失败 (${response.status})`);
+          return;
+        }
+      } catch (error) {
+        addLog('error', '❌ JSON文件访问异常', error);
+        return;
+      }
+      
+      // 2. 验证数据格式
+      addLog('info', '步骤2: 验证数据格式');
+      try {
+        const response = await fetch('/io_connect_china_2025_workshops.json');
+        const textData = await response.text();
+        const jsonData = JSON.parse(textData);
+        
+        let isValidFormat = false;
+        let recordCount = 0;
+        
+        if (Array.isArray(jsonData)) {
+          isValidFormat = jsonData.every(item => 
+            item.标题 && item.专场 && item.日期 && item.开始时间 && item.结束时间
+          );
+          recordCount = jsonData.length;
+        } else if (jsonData && jsonData.meetings && Array.isArray(jsonData.meetings)) {
+          isValidFormat = jsonData.meetings.every(item => 
+            item.标题 && item.专场 && item.日期 && item.开始时间 && item.结束时间
+          );
+          recordCount = jsonData.meetings.length;
+        }
+        
+        if (isValidFormat && recordCount > 0) {
+          addLog('success', `✅ 数据格式有效，包含 ${recordCount} 条记录`);
+        } else {
+          addLog('error', '❌ 数据格式无效或为空');
+          return;
+        }
+      } catch (error) {
+        addLog('error', '❌ 数据格式验证失败', error);
+        return;
+      }
+      
+      // 3. 测试数据库写入权限
+      addLog('info', '步骤3: 测试数据库写入权限');
+      try {
+        const { DatabaseService } = await import('../lib/database');
+        
+        // 测试写入一条临时数据
+        const testMeeting = {
+          id: 'test-meeting-' + Date.now(),
+          标题: '测试会议',
+          专场: '测试专场',
+          日期: '2024-01-01',
+          开始时间: '10:00',
+          结束时间: '11:00',
+          时段: '上午',
+          简介: '测试数据',
+          嘉宾: []
+        };
+        
+        await DatabaseService.addMeetings([testMeeting]);
+        addLog('success', '✅ 数据库写入权限正常');
+        
+        // 清理测试数据
+        const { db } = await import('../lib/database');
+        await db.meetings.delete(testMeeting.id);
+        addLog('info', '测试数据已清理');
+      } catch (error) {
+        addLog('error', '❌ 数据库写入权限测试失败', error);
+        
+        if (error.name === 'QuotaExceededError') {
+          addLog('error', '💡 解决方案: 清理浏览器数据或关闭隐私模式');
+        } else if (error.name === 'InvalidStateError') {
+          addLog('error', '💡 解决方案: 刷新页面重试');
+        } else if (error.name === 'UnknownError') {
+          addLog('error', '💡 解决方案: 检查浏览器存储权限设置');
+        }
+        return;
+      }
+      
+      // 4. 检查存储配额
+      addLog('info', '步骤4: 检查存储配额');
+      try {
+        if ('storage' in navigator && 'estimate' in navigator.storage) {
+          const estimate = await navigator.storage.estimate();
+          const usedMB = ((estimate.usage || 0) / 1024 / 1024).toFixed(2);
+          const quotaMB = ((estimate.quota || 0) / 1024 / 1024).toFixed(2);
+          const usagePercent = estimate.quota ? ((estimate.usage || 0) / estimate.quota * 100).toFixed(1) : '未知';
+          
+          addLog('info', `存储使用情况: ${usedMB}MB / ${quotaMB}MB (${usagePercent}%)`);
+          
+          if (estimate.quota && estimate.usage && estimate.usage / estimate.quota > 0.9) {
+            addLog('warn', '⚠️ 存储空间使用率超过90%，建议清理数据');
+          } else {
+            addLog('success', '✅ 存储空间充足');
+          }
+        } else {
+          addLog('warn', '⚠️ 无法获取存储配额信息（iOS Safari限制）');
+        }
+      } catch (error) {
+        addLog('warn', '存储配额检查失败', error);
+      }
+      
+      addLog('success', '🎉 会议数据诊断完成');
+    } catch (error) {
+      addLog('error', '会议数据诊断失败', error);
     }
   };
 
@@ -232,6 +495,61 @@ const DebugConsole: React.FC<DebugConsoleProps> = ({ visible, onClose }) => {
     }
   }, [visible]);
 
+  // 全局console捕获
+  useEffect(() => {
+    if (!visible) return;
+
+    // 保存原始console方法
+    originalConsole.current = {
+      log: console.log,
+      error: console.error,
+      warn: console.warn,
+      info: console.info
+    };
+
+    // 重写console方法
+    console.log = (...args: any[]) => {
+      originalConsole.current?.log(...args);
+      addLog('info', args.map(arg => 
+        typeof arg === 'object' ? JSON.stringify(arg, null, 2) : String(arg)
+      ).join(' '));
+    };
+
+    console.error = (...args: any[]) => {
+      originalConsole.current?.error(...args);
+      addLog('error', args.map(arg => 
+        typeof arg === 'object' ? JSON.stringify(arg, null, 2) : String(arg)
+      ).join(' '));
+    };
+
+    console.warn = (...args: any[]) => {
+      originalConsole.current?.warn(...args);
+      addLog('warn', args.map(arg => 
+        typeof arg === 'object' ? JSON.stringify(arg, null, 2) : String(arg)
+      ).join(' '));
+    };
+
+    console.info = (...args: any[]) => {
+      originalConsole.current?.info(...args);
+      addLog('info', args.map(arg => 
+        typeof arg === 'object' ? JSON.stringify(arg, null, 2) : String(arg)
+      ).join(' '));
+    };
+
+    addLog('success', '全局console捕获已启用');
+
+    // 清理函数：恢复原始console方法
+    return () => {
+      if (originalConsole.current) {
+        console.log = originalConsole.current.log;
+        console.error = originalConsole.current.error;
+        console.warn = originalConsole.current.warn;
+        console.info = originalConsole.current.info;
+        originalConsole.current = null;
+      }
+    };
+  }, [visible]);
+
   // 自动滚动到最新日志
   useEffect(() => {
     logsEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -263,9 +581,7 @@ const DebugConsole: React.FC<DebugConsoleProps> = ({ visible, onClose }) => {
     }
   };
 
-  console.log("#1")
   if (!visible) return null;
-  console.log("#2")
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-end">
@@ -323,6 +639,13 @@ const DebugConsole: React.FC<DebugConsoleProps> = ({ visible, onClose }) => {
                 >
                   <RefreshCw className="w-4 h-4" />
                   重新加载
+                </button>
+                <button
+                  onClick={diagnoseMeetingData}
+                  className="flex items-center gap-1 px-3 py-1 bg-purple-500 text-white rounded text-sm hover:bg-purple-600"
+                >
+                  <AlertTriangle className="w-4 h-4" />
+                  会议数据诊断
                 </button>
                 <button
                   onClick={clearCache}
@@ -396,6 +719,28 @@ const DebugConsole: React.FC<DebugConsoleProps> = ({ visible, onClose }) => {
                   <p>数据库: {storageInfo.indexedDB.databases.join(', ') || '无'}</p>
                 </div>
               </div>
+
+              {/* 会议数据状态 */}
+              <div className="bg-gray-50 p-3 rounded">
+                <h3 className="font-medium text-gray-800 mb-2">会议数据状态</h3>
+                <div className="text-sm space-y-1">
+                  <p>会议数量: <span className={`font-medium ${meetings?.length ? 'text-green-600' : 'text-red-600'}`}>{meetings?.length || 0}</span></p>
+                  <p>数据版本: <span className="font-medium">{localStorage.getItem('dataVersion') || '未知'}</span></p>
+                  <p>最后更新: <span className="font-medium">{localStorage.getItem('lastDataUpdate') ? new Date(localStorage.getItem('lastDataUpdate')!).toLocaleString('zh-CN') : '未知'}</span></p>
+                  <p>数据源文件: <span className="font-medium">io_connect_china_2025_workshops.json</span></p>
+                </div>
+              </div>
+
+              {/* 应用状态 */}
+              <div className="bg-gray-50 p-3 rounded">
+                <h3 className="font-medium text-gray-800 mb-2">应用状态</h3>
+                <div className="text-sm space-y-1">
+                  <p>用户偏好: <span className={`font-medium ${userPreferences ? 'text-green-600' : 'text-red-600'}`}>{userPreferences ? '已加载' : '未加载'}</span></p>
+                  <p>网络状态: <span className={`font-medium ${isOnline ? 'text-green-600' : 'text-red-600'}`}>{isOnline ? '在线' : '离线'}</span></p>
+                  <p>设备类型: <span className="font-medium">{getDeviceInfo().platform}</span></p>
+                  <p>浏览器: <span className="font-medium">{getDeviceInfo().userAgent.includes('Safari') && getDeviceInfo().userAgent.includes('Mobile') ? 'iOS Safari' : '其他'}</span></p>
+                </div>
+              </div>
             </div>
           )}
 
@@ -418,7 +763,7 @@ const DebugConsole: React.FC<DebugConsoleProps> = ({ visible, onClose }) => {
           )}
 
           {activeTab === 'device' && (
-            <div className="p-4 space-y-4">
+            <div className="p-4 space-y-4 overflow-y-auto h-full">
               <div className="bg-gray-50 p-3 rounded">
                 <h3 className="font-medium text-gray-800 mb-2">设备信息</h3>
                 <pre className="text-xs bg-white p-2 rounded overflow-x-auto">
@@ -431,7 +776,43 @@ const DebugConsole: React.FC<DebugConsoleProps> = ({ visible, onClose }) => {
                 <div className="text-sm space-y-1">
                   <p>会议数量: {meetings?.length || 0}</p>
                   <p>用户偏好: {userPreferences ? '已加载' : '未加载'}</p>
-                  <p>通知权限: {Notification.permission}</p>
+                  <p>通知权限: {typeof Notification !== 'undefined' ? Notification.permission : '不可用'}</p>
+                </div>
+              </div>
+              
+              {/* iOS设备特定信息 */}
+              {getDeviceInfo().userAgent.includes('Safari') && getDeviceInfo().userAgent.includes('Mobile') && (
+                <div className="bg-yellow-50 border border-yellow-200 p-3 rounded">
+                  <h3 className="font-medium text-yellow-800 mb-2">iOS Safari 特定信息</h3>
+                  <div className="space-y-2 text-sm text-yellow-700">
+                    <div className="font-medium">常见问题及解决方案:</div>
+                    <ul className="list-disc list-inside space-y-1 ml-2">
+                      <li><strong>QuotaExceededError:</strong> 存储空间不足，尝试清理Safari数据或关闭隐私模式</li>
+                      <li><strong>InvalidStateError:</strong> 数据库状态异常，刷新页面重试</li>
+                      <li><strong>UnknownError:</strong> 检查Safari的存储权限设置</li>
+                      <li><strong>网络缓存问题:</strong> 使用无痕浏览模式或清除网站数据</li>
+                      <li><strong>JSON解析失败:</strong> 检查网络连接，确保文件完整下载</li>
+                    </ul>
+                    
+                    <div className="mt-3 p-2 bg-yellow-100 rounded text-xs">
+                      <strong>建议操作顺序:</strong><br/>
+                      1. 点击"会议数据诊断"按钮进行详细检查<br/>
+                      2. 如有错误，按照提示的解决方案操作<br/>
+                      3. 清除缓存后重新加载数据<br/>
+                      4. 如问题持续，尝试使用无痕模式
+                    </div>
+                  </div>
+                </div>
+              )}
+              
+              {/* 存储兼容性检查 */}
+              <div className="bg-blue-50 border border-blue-200 p-3 rounded">
+                <h3 className="font-medium text-blue-800 mb-2">存储兼容性检查</h3>
+                <div className="space-y-1 text-sm text-blue-700">
+                  <div>IndexedDB: {storageInfo?.indexedDB.available ? '✅ 支持' : '❌ 不支持'}</div>
+                  <div>LocalStorage: {storageInfo?.localStorage.available ? '✅ 支持' : '❌ 不支持'}</div>
+                  <div>Storage API: {'storage' in navigator ? '✅ 支持' : '❌ 不支持'}</div>
+                  <div>Service Worker: {'serviceWorker' in navigator ? '✅ 支持' : '❌ 不支持'}</div>
                 </div>
               </div>
             </div>

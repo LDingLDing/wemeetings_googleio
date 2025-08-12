@@ -96,6 +96,7 @@ export const useAppStore = create<AppState>((set, get) => ({
       const meetings = await DatabaseService.getAllMeetings();
       set({ meetings, filteredMeetings: meetings });
     } catch (error) {
+      console.log(error)
       set({ error: error instanceof Error ? error.message : '加载会议数据失败' });
     }
   },

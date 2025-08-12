@@ -466,7 +466,7 @@ const Settings = () => {
                     2025 Google开发者大会会议预约助手
                   </div>
                   <div className="text-xs text-gray-500 dark:text-gray-400">
-                    版本 1.1.4
+                    版本 1.1.7
                   </div>
                   <div className="text-xs text-gray-500 dark:text-gray-400">
                     帮助您管理会议行程，避免时间冲突

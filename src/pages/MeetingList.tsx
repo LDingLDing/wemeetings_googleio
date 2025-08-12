@@ -303,6 +303,103 @@ const MeetingList = () => {
     return `${month}月${day}日`;
   };
 
+  // 渲染会议列表
+  const renderMeetingList = () => (
+    <div className="space-y-3">
+      {displayedMeetings.map((meeting) => (
+        <MeetingCard
+          key={meeting.id}
+          meeting={meeting}
+          onClick={() => handleMeetingClick(meeting)}
+        />
+      ))}
+      
+      {/* 无限滚动 */}
+      <InfiniteScroll loadMore={loadMore} hasMore={hasMore}>
+        {hasMore ? (
+          <div className="text-center py-4">
+            <span className="text-gray-500 dark:text-gray-400">加载更多...</span>
+          </div>
+        ) : (
+          <div className="text-center py-4 pb-16">
+            <span className="text-gray-400 dark:text-gray-500">没有更多会议了</span>
+          </div>
+        )}
+      </InfiniteScroll>
+    </div>
+  );
+
+  // 渲染清除筛选按钮
+  const renderClearFilterButton = () => (
+    <div className="flex justify-center">
+      <Button
+        size="small"
+        fill="outline"
+        onClick={() => {
+          setSearchText('');
+          filterMeetings({});
+          setActiveTab('all');
+        }}
+        className="dark:border-gray-600 dark:text-gray-200"
+      >
+        清除筛选条件
+      </Button>
+    </div>
+  );
+
+  // 渲染重新加载按钮
+  const renderReloadButton = () => (
+    <div className="flex justify-center">
+      <Button
+        size="small"
+        color="primary"
+        fill="outline"
+        onClick={handleRetry}
+        className="flex items-center justify-center gap-1"
+      >
+        重新加载数据
+      </Button>
+    </div>
+  );
+
+  // 渲染空状态
+  const renderEmptyState = () => {
+    const hasActiveFilter = currentFilter.searchText || currentFilter.date;
+    const emptyMessage = hasActiveFilter ? '没有找到符合条件的会议' : '暂无会议数据';
+    const actionButton = hasActiveFilter ? renderClearFilterButton() : renderReloadButton();
+
+    return (
+      <div className="mt-8">
+        <Empty
+          description={
+            <div className="text-center">
+              <p className="text-gray-500 dark:text-gray-400 mb-2">
+                {emptyMessage}
+              </p>
+              {actionButton}
+            </div>
+          }
+        />
+      </div>
+    );
+  };
+
+  // 渲染会议内容区域
+  const renderMeetingContent = () => {
+    // 如果正在加载或有错误，不显示内容
+    if (isDataLoading || dataLoadError) {
+      return null;
+    }
+
+    // 如果有会议数据，显示列表
+    if (displayedMeetings.length > 0) {
+      return renderMeetingList();
+    }
+
+    // 否则显示空状态
+    return renderEmptyState();
+  };
+
   return (
     <div className="bg-gray-50 dark:bg-gray-900 min-h-screen">
       {/* 头部 */}
@@ -456,71 +553,8 @@ const MeetingList = () => {
             </div>
           )}
 
-          {/* 会议卡片列表 */}
-          {!isDataLoading && !dataLoadError && displayedMeetings.length > 0 ? (
-            <div className="space-y-3">
-              {displayedMeetings.map((meeting) => (
-                <MeetingCard
-                  key={meeting.id}
-                  meeting={meeting}
-                  onClick={() => handleMeetingClick(meeting)}
-                />
-              ))}
-              
-              {/* 无限滚动 */}
-              <InfiniteScroll loadMore={loadMore} hasMore={hasMore}>
-                {hasMore ? (
-                  <div className="text-center py-4">
-                    <span className="text-gray-500 dark:text-gray-400">加载更多...</span>
-                  </div>
-                ) : (
-                  <div className="text-center py-4 pb-16">
-                    <span className="text-gray-400 dark:text-gray-500">没有更多会议了</span>
-                  </div>
-                )}
-              </InfiniteScroll>
-            </div>
-          ) : !isDataLoading && !dataLoadError && (
-            <div className="mt-8">
-              <Empty
-                description={
-                  <div className="text-center">
-                    <p className="text-gray-500 dark:text-gray-400 mb-2">
-                      {currentFilter.searchText || currentFilter.date 
-                        ? '没有找到符合条件的会议' 
-                        : '暂无会议数据'
-                      }
-                    </p>
-                    {(currentFilter.searchText || currentFilter.date) ? (
-                      <Button
-                        size="small"
-                        fill="outline"
-                        onClick={() => {
-                          setSearchText('');
-                          filterMeetings({});
-                          setActiveTab('all');
-                        }}
-                        className="dark:border-gray-600 dark:text-gray-200"
-                      >
-                        清除筛选条件
-                      </Button>
-                    ) : (
-                      <Button
-                        size="small"
-                        color="primary"
-                        fill="outline"
-                        onClick={handleRetry}
-                        className="flex items-center justify-center mx-auto"
-                      >
-                        <RefreshCw className="w-4 h-4 mr-1" />
-                        重新加载数据
-                      </Button>
-                    )}
-                  </div>
-                }
-              />
-            </div>
-          )}
+          {/* 会议内容区域 */}
+          {renderMeetingContent()}
         </div>
       </PullToRefresh>
 

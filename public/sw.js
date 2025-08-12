@@ -51,13 +51,17 @@ self.addEventListener('fetch', (event) => {
             return response;
           }
           
-          // 克隆响应
-          const responseToCache = response.clone();
-          
-          caches.open(CACHE_NAME)
-            .then((cache) => {
-              cache.put(event.request, responseToCache);
-            });
+          // 检查请求的 URL scheme，只缓存 HTTP 和 HTTPS 请求
+          const requestUrl = new URL(event.request.url);
+          if (requestUrl.protocol === 'http:' || requestUrl.protocol === 'https:') {
+            // 克隆响应
+            const responseToCache = response.clone();
+            
+            caches.open(CACHE_NAME)
+              .then((cache) => {
+                cache.put(event.request, responseToCache);
+              });
+          }
           
           return response;
         });

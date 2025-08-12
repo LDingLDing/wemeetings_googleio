@@ -7,6 +7,7 @@ import { DataImportService } from './lib/dataImport';
 import { pwaService } from './lib/pwa';
 import { initializeAudioService } from './lib/audioService';
 import { reminderService } from './lib/reminderService';
+import { trackPageView, trackError } from './utils/analytics';
 import Home from './pages/Home';
 import MeetingDetail from './pages/MeetingDetail';
 import MySchedule from './pages/MySchedule';
@@ -52,8 +53,15 @@ function App() {
         if (!firstTimeGuideCompleted) {
           setShowFirstTimeGuide(true);
         }
+        
+        // 追踪应用启动
+        trackPageView({
+          page_title: '谷歌开发者大会预约助手',
+          page_path: '/'
+        });
       } catch (error) {
         console.error('应用初始化失败:', error);
+        trackError(`应用初始化失败: ${error}`, true);
       }
     };
 

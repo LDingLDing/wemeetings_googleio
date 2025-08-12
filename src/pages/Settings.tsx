@@ -15,6 +15,7 @@ import { UserPreferences } from "../types";
 import Layout from "../components/Layout";
 import NotificationStatus from "../components/NotificationStatus";
 import { reminderService } from "../lib/reminderService";
+import { trackUserInteraction, trackPageView } from "../utils/analytics";
 
 const Settings = () => {
   const navigate = useNavigate();
@@ -51,6 +52,9 @@ const Settings = () => {
     };
     
     loadLocalPreferences();
+    
+    // 追踪页面浏览
+    trackPageView('设置页面', '/settings');
   }, []);
 
   // 同步本地偏好设置
@@ -62,6 +66,7 @@ const Settings = () => {
 
   // 即时保存设置
   const handlePreferenceChange = async (newPreferences: UserPreferences) => {
+    const oldPreferences = localPreferences;
     setLocalPreferences(newPreferences);
     try {
       // 保存到状态管理
@@ -70,6 +75,19 @@ const Settings = () => {
       localStorage.setItem('userPreferences', JSON.stringify(newPreferences));
       // 更新提醒服务的用户偏好
       reminderService.setUserPreferences(newPreferences);
+      
+      // 追踪设置变更事件
+      const changedSettings = Object.keys(newPreferences).filter(
+        key => oldPreferences[key as keyof UserPreferences] !== newPreferences[key as keyof UserPreferences]
+      );
+      
+      if (changedSettings.length > 0) {
+        trackUserInteraction('settings_change', 'preferences', {
+          changed_settings: changedSettings.join(','),
+          notification_enabled: newPreferences.notificationEnabled,
+          reminder_time: newPreferences.defaultReminderTime
+        });
+      }
     } catch (error) {
       console.error('保存设置失败:', error);
     }
@@ -79,6 +97,13 @@ const Settings = () => {
   const handleClearAllData = async () => {
     try {
       await clearAllData();
+      
+      // 追踪数据清除事件
+      trackUserInteraction('data_clear', 'settings', {
+        total_meetings: stats.totalMeetings,
+        booked_meetings: stats.bookedMeetings
+      });
+      
       Toast.show("数据已清除");
       setShowClearModal(false);
     } catch (error) {
@@ -303,7 +328,10 @@ const Settings = () => {
                 prefix={<HelpCircle size={20} className="text-gray-600 dark:text-gray-300" />} 
                 extra={<ExternalLink size={16} className="text-gray-400 dark:text-gray-500" />}
                 clickable
-                onClick={() => navigate('/help')}
+                onClick={() => {
+                  navigate('/help');
+                  trackUserInteraction('navigation', 'help_center', {});
+                }}
               >
                 <span className="text-gray-800 dark:text-gray-100">帮助中心</span>
               </List.Item>

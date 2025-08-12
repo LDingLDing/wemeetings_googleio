@@ -27,6 +27,60 @@
     <!-- 防止缩放 -->
     <meta name="format-detection" content="telephone=no" />
     <meta name="msapplication-tap-highlight" content="no" />
+    
+    <!-- Google Analytics with error handling and timeout -->
+    <script>
+      (function() {
+        // 设置超时时间（5秒）
+        const GA_TIMEOUT = 5000;
+        let gaLoaded = false;
+        
+        // 创建超时处理
+        const timeoutId = setTimeout(function() {
+          if (!gaLoaded) {
+            console.warn('Google Analytics loading timeout, continuing without analytics');
+          }
+        }, GA_TIMEOUT);
+        
+        // 异步加载GA脚本
+        const script = document.createElement('script');
+        script.async = true;
+        script.src = 'https://www.googletagmanager.com/gtag/js?id=G-B0TDRMLHPS';
+        
+        // 成功加载处理
+        script.onload = function() {
+          gaLoaded = true;
+          clearTimeout(timeoutId);
+          
+          // 初始化GA
+          window.dataLayer = window.dataLayer || [];
+          function gtag(){dataLayer.push(arguments);}
+          gtag('js', new Date());
+          gtag('config', 'G-B0TDRMLHPS', {
+            // 在离线模式下不发送数据
+            send_page_view: navigator.onLine !== false
+          });
+          
+          // 将gtag函数暴露到全局
+          window.gtag = gtag;
+        };
+        
+        // 错误处理
+        script.onerror = function() {
+          gaLoaded = true;
+          clearTimeout(timeoutId);
+          console.warn('Failed to load Google Analytics, continuing without analytics');
+          
+          // 创建一个空的gtag函数，避免调用时出错
+          window.gtag = function() {
+            console.debug('GA not available, skipping analytics call');
+          };
+        };
+        
+        // 添加脚本到head
+        document.head.appendChild(script);
+      })();
+    </script>
     <script type="module">
       if (import.meta.hot?.on) {
         import.meta.hot.on('vite:error', (error) => {

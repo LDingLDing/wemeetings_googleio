@@ -18,6 +18,7 @@ import { useAppStore } from '../store';
 import { Meeting } from '../types';
 import Layout from '../components/Layout';
 import MeetingCard from '../components/MeetingCard';
+import { trackMeetingEvent, trackUserInteraction, trackPageView } from '../utils/analytics';
 
 const MySchedule = () => {
   const navigate = useNavigate();
@@ -30,6 +31,11 @@ const MySchedule = () => {
   
   const [activeTab, setActiveTab] = useState('all');
   const [conflicts, setConflicts] = useState<{ meeting: Meeting; conflictingMeeting: Meeting }[]>([]);
+  
+  // 追踪页面浏览
+  useEffect(() => {
+    trackPageView('我的行程', '/my-schedule');
+  }, []);
 
   // 获取已预约的会议
   const bookedMeetings = useMemo(() => {
@@ -121,6 +127,13 @@ const MySchedule = () => {
     if (result) {
       try {
         await cancelBooking(meetingId);
+        
+        // 追踪取消预约事件
+        trackMeetingEvent('cancel', meetingId, {
+          meeting_title: meetingTitle,
+          source: 'my_schedule'
+        });
+        
         Toast.show('已取消预约');
       } catch (error) {
         Toast.show('取消失败，请重试');
@@ -166,19 +179,36 @@ const MySchedule = () => {
                 key: 'view',
                 text: '查看',
                 color: 'primary',
-                onClick: () => navigate(`/meeting/${meeting.id}`)
-              },
+                onClick: () => {
+                      navigate(`/meeting/${meeting.id}`);
+                      trackUserInteraction('navigation', 'meeting_detail', {
+                        source: 'schedule_swipe',
+                        meeting_id: meeting.id
+                      });
+                    }
+                  },
               {
                 key: 'cancel',
                 text: '取消',
                 color: 'danger',
-                onClick: () => handleCancelBooking(meeting.id, meeting.标题)
-              }
+                onClick: () => {
+                      handleCancelBooking(meeting.id, meeting.标题);
+                      trackUserInteraction('swipe_action', 'cancel_booking', {
+                        meeting_id: meeting.id
+                      });
+                    }
+                  }
             ]}
           >
             <MeetingCard
               meeting={meeting}
-              onClick={() => navigate(`/meeting/${meeting.id}`)}
+              onClick={() => {
+                navigate(`/meeting/${meeting.id}`);
+                trackUserInteraction('navigation', 'meeting_detail', {
+                  source: 'schedule_card',
+                  meeting_id: meeting.id
+                });
+              }}
               showBookingStatus={false}
             />
           </SwipeAction>
@@ -383,7 +413,11 @@ const MySchedule = () => {
           {/* 标签页 */}
           <Tabs
             activeKey={activeTab}
-            onChange={setActiveTab}
+            onChange={(key) => {
+              setActiveTab(key);
+              // 追踪标签页切换
+              trackUserInteraction('tab_change', 'schedule_view', { tab: key });
+            }}
             className="bg-white dark:bg-gray-800"
           >
             {tabs.map(tab => (

@@ -18,6 +18,7 @@ import { useAppStore } from '../store';
 import { reminderService } from '../lib/reminderService';
 import { Meeting, ConflictResult } from '../types';
 import Layout from '../components/Layout';
+import { trackMeetingEvent, trackPageView } from '../utils/analytics';
 
 const MeetingDetail = () => {
   const { id } = useParams<{ id: string }>();
@@ -45,6 +46,9 @@ const MeetingDetail = () => {
         const foundMeeting = meetings.find(m => m.id === id);
         if (foundMeeting) {
           setMeeting(foundMeeting);
+          
+          // 追踪页面浏览
+          trackPageView(`会议详情 - ${foundMeeting.标题}`, `/meeting/${id}`);
           
           // 检查是否已预约
           const booking = bookings.find(b => 
@@ -89,6 +93,13 @@ const MeetingDetail = () => {
         // 取消会议提醒
         reminderService.cancelMeetingReminders(meeting.id);
         
+        // 追踪取消预约事件
+        trackMeetingEvent('cancel', meeting.id, {
+          meeting_title: meeting.标题,
+          meeting_category: meeting.专场,
+          meeting_date: meeting.日期
+        });
+        
         Toast.show('已取消预约和提醒');
       } else {
         // 直接预约会议，不显示冲突确认弹窗
@@ -103,6 +114,15 @@ const MeetingDetail = () => {
             [defaultReminderTime, 5] // 默认提醒时间和5分钟前提醒
           );
         }
+        
+        // 追踪预约事件
+        trackMeetingEvent('book', meeting.id, {
+          meeting_title: meeting.标题,
+          meeting_category: meeting.专场,
+          meeting_date: meeting.日期,
+          has_conflict: conflicts.length > 0,
+          conflict_count: conflicts.length
+        });
         
         if (conflicts.length > 0) {
           Toast.show('预约成功，已设置提醒，请注意时间冲突');

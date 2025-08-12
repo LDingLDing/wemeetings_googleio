@@ -14,6 +14,7 @@ import { useAppStore } from '../store';
 import { Meeting, MeetingFilter } from '../types';
 import MeetingCard from '../components/MeetingCard';
 import FilterModal from '../components/FilterModal';
+import { trackMeetingEvent, trackUserInteraction } from '../utils/analytics';
 
 const MeetingList = () => {
   const navigate = useNavigate();
@@ -65,6 +66,11 @@ const MeetingList = () => {
       searchText: value || undefined
     };
     filterMeetings(newFilter);
+    
+    // 追踪搜索事件
+    if (value.trim()) {
+      trackMeetingEvent('search', undefined, { search_term: value.trim() });
+    }
   };
 
   // 处理分类切换
@@ -75,17 +81,34 @@ const MeetingList = () => {
       category: key === 'all' ? undefined : key
     };
     filterMeetings(newFilter);
+    
+    // 追踪分类切换事件
+    trackUserInteraction('tab_change', 'category_filter', { category: key });
   };
 
   // 处理筛选
   const handleFilter = (filter: MeetingFilter) => {
     filterMeetings(filter);
     setShowFilter(false);
+    
+    // 追踪筛选事件
+    trackMeetingEvent('filter', undefined, {
+      filter_date: filter.date,
+      filter_time_slot: filter.timeSlot,
+      filter_difficulty: filter.difficulty
+    });
   };
 
   // 处理会议卡片点击
   const handleMeetingClick = (meeting: Meeting) => {
     navigate(`/meeting/${meeting.id}`);
+    
+    // 追踪会议查看事件
+    trackMeetingEvent('view', meeting.id, {
+      meeting_title: meeting.标题,
+      meeting_category: meeting.专场,
+      meeting_date: meeting.日期
+    });
   };
 
   // 下拉刷新

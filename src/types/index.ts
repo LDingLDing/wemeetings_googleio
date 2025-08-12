@@ -70,3 +70,37 @@ export interface ConflictResult {
   conflictingMeetings: Meeting[];
   suggestions: Meeting[];
 }
+
+// Google Analytics 相关类型定义
+export interface AnalyticsEvent {
+  action: string;
+  category: string;
+  label?: string;
+  value?: number;
+  custom_parameters?: Record<string, any>;
+}
+
+export interface PageViewEvent {
+  page_title?: string;
+  page_location?: string;
+  page_path?: string;
+}
+
+export interface AnalyticsConfig {
+  measurement_id: string;
+  send_page_view?: boolean;
+  anonymize_ip?: boolean;
+  allow_google_signals?: boolean;
+}
+
+// 全局gtag函数类型定义
+declare global {
+  interface Window {
+    gtag?: (
+      command: 'config' | 'event' | 'js' | 'set',
+      targetId: string | Date,
+      config?: any
+    ) => void;
+    dataLayer?: any[];
+  }
+}

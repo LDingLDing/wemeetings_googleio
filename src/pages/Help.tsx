@@ -19,11 +19,17 @@ import Layout from '../components/Layout';
 import { pwaService } from '../lib/pwa';
 import { audioService } from '../lib/audioService';
 import { useAppStore } from '../store';
+import { trackPageView, trackUserInteraction } from '../utils/analytics';
 
 const Help = () => {
   const navigate = useNavigate();
   const [activeKey, setActiveKey] = useState<string[]>([]);
   const { userPreferences } = useAppStore();
+  
+  // 追踪页面浏览
+  React.useEffect(() => {
+    trackPageView('帮助中心', '/help');
+  }, []);
 
   const faqData = [
     {
@@ -207,13 +213,19 @@ const Help = () => {
       title: '查看设置',
       description: '管理应用偏好设置',
       icon: <Settings className="w-6 h-6 text-gray-500" />,
-      action: () => navigate('/settings')
+      action: () => {
+        trackUserInteraction('navigation', 'settings', { source: 'help_quick_action' });
+        navigate('/settings');
+      }
     },
     {
       title: '我的日程',
       description: '查看已预约的会议',
       icon: <Calendar className="w-6 h-6 text-blue-500" />,
-      action: () => navigate('/schedule')
+      action: () => {
+        trackUserInteraction('navigation', 'schedule', { source: 'help_quick_action' });
+        navigate('/schedule');
+      }
     }
   ];
 
@@ -289,6 +301,7 @@ const Help = () => {
                        color="primary"
                        onClick={async () => {
                          try {
+                           trackUserInteraction('test_feature', 'notification', { source: 'help_page' });
                            await pwaService.testNotification({
                              enableSound: userPreferences?.enableSound,
                              enableVibration: userPreferences?.enableVibration
@@ -307,6 +320,7 @@ const Help = () => {
                        fill="outline"
                        onClick={async () => {
                          try {
+                           trackUserInteraction('test_feature', 'meeting_reminder', { source: 'help_page' });
                            await pwaService.sendMeetingReminder(
                              '测试会议',
                              '2025-01-20 14:00',
@@ -331,6 +345,7 @@ const Help = () => {
                          fill="outline"
                          onClick={async () => {
                            try {
+                             trackUserInteraction('test_feature', 'sound', { source: 'help_page' });
                              await audioService.testSound();
                              Toast.show('测试声音播放成功');
                            } catch (error) {
@@ -360,7 +375,16 @@ const Help = () => {
               </h2>
               <Collapse
                 activeKey={activeKey}
-                onChange={setActiveKey}
+                onChange={(keys) => {
+                  setActiveKey(keys);
+                  // 追踪FAQ展开/收起
+                  if (keys.length > activeKey.length) {
+                    const newKey = keys.find(key => !activeKey.includes(key));
+                    if (newKey) {
+                      trackUserInteraction('faq_expand', newKey, { source: 'help_page' });
+                    }
+                  }
+                }}
                 accordion={false}
               >
                 {faqData.map((item) => (

@@ -53,17 +53,49 @@ export class DataImportService {
   }
 
   /**
+   * 检查localStorage是否可用
+   */
+  static isLocalStorageAvailable(): boolean {
+    try {
+      const test = '__localStorage_test__';
+      localStorage.setItem(test, test);
+      localStorage.removeItem(test);
+      return true;
+    } catch (e) {
+      console.error(e)
+      return false;
+    }
+  }
+
+  /**
    * 获取本地存储的版本信息
    */
   static getStoredVersion(): string | null {
-    return localStorage.getItem(VERSION_STORAGE_KEY);
+    try {
+      if (!this.isLocalStorageAvailable()) {
+        console.warn('localStorage不可用，使用内存存储');
+        return null;
+      }
+      return localStorage.getItem(VERSION_STORAGE_KEY);
+    } catch (error) {
+      console.warn('获取版本信息失败:', error);
+      return null;
+    }
   }
 
   /**
    * 设置本地存储的版本信息
    */
   static setStoredVersion(version: string): void {
-    localStorage.setItem(VERSION_STORAGE_KEY, version);
+    try {
+      if (!this.isLocalStorageAvailable()) {
+        console.warn('localStorage不可用，跳过版本信息存储');
+        return;
+      }
+      localStorage.setItem(VERSION_STORAGE_KEY, version);
+    } catch (error) {
+      console.warn('设置版本信息失败:', error);
+    }
   }
 
   /**
@@ -71,30 +103,74 @@ export class DataImportService {
    */
   static async loadMeetingsFromFile(): Promise<void> {
     try {
-      // 在实际应用中，这里会从服务器或本地文件加载数据
-      // 现在我们使用fetch从public目录加载
-      const response = await fetch('/io_connect_china_2025_workshops.json');
-      if (!response.ok) {
-        throw new Error('无法加载会议数据文件');
-      }
+      // iOS Safari兼容性：添加缓存控制和超时处理
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 10000); // 10秒超时
       
-      const jsonData = await response.json();
-      
-      // 检查是否为新格式（包含版本信息）
-      if (jsonData.version && jsonData.meetings) {
-        const meetingData: MeetingDataVersion = jsonData;
-        await this.importMeetingsFromJSON(meetingData.meetings);
-        // 更新本地版本信息
-        this.setStoredVersion(meetingData.version);
-        console.log(`数据版本: ${meetingData.version}, 更新时间: ${meetingData.lastUpdated}`);
-      } else {
-        // 兼容旧格式
-        const meetings: RawMeetingData[] = Array.isArray(jsonData) ? jsonData : [];
-        await this.importMeetingsFromJSON(meetings);
+      try {
+        // 在实际应用中，这里会从服务器或本地文件加载数据
+        // 现在我们使用fetch从public目录加载
+        const response = await fetch('/io_connect_china_2025_workshops.json', {
+          signal: controller.signal,
+          cache: 'no-cache', // iOS Safari缓存问题
+          headers: {
+            'Cache-Control': 'no-cache',
+            'Pragma': 'no-cache'
+          }
+        });
+        
+        clearTimeout(timeoutId);
+        
+        if (!response.ok) {
+          throw new Error(`HTTP ${response.status}: 无法加载会议数据文件`);
+        }
+        
+        // iOS Safari JSON解析兼容性处理
+        let jsonData;
+        try {
+          const textData = await response.text();
+          if (!textData || textData.trim() === '') {
+            throw new Error('JSON文件为空');
+          }
+          jsonData = JSON.parse(textData);
+        } catch (parseError) {
+          console.error('JSON解析失败:', parseError);
+          throw new Error('JSON数据格式错误');
+        }
+        
+        // 检查是否为新格式（包含版本信息）
+        if (jsonData && typeof jsonData === 'object' && jsonData.version && jsonData.meetings) {
+          const meetingData: MeetingDataVersion = jsonData;
+          if (Array.isArray(meetingData.meetings) && meetingData.meetings.length > 0) {
+            await this.importMeetingsFromJSON(meetingData.meetings);
+            // 更新本地版本信息
+            this.setStoredVersion(meetingData.version);
+            console.log(`数据版本: ${meetingData.version}, 更新时间: ${meetingData.lastUpdated}`);
+          } else {
+            throw new Error('会议数据为空或格式错误');
+          }
+        } else {
+          // 兼容旧格式
+          const meetings: RawMeetingData[] = Array.isArray(jsonData) ? jsonData : [];
+          if (meetings.length === 0) {
+            throw new Error('会议数据为空');
+          }
+          await this.importMeetingsFromJSON(meetings);
+        }
+      } catch (fetchError) {
+        clearTimeout(timeoutId);
+        if (fetchError.name === 'AbortError') {
+          throw new Error('加载会议数据超时');
+        }
+        throw fetchError;
       }
     } catch (error) {
       console.error('加载会议数据文件失败:', error);
-      throw new Error('加载会议数据文件失败');
+      // iOS Safari特定错误处理
+      if (error.message.includes('NetworkError') || error.message.includes('fetch')) {
+        throw new Error('网络连接失败，请检查网络设置');
+      }
+      throw new Error(`加载会议数据失败: ${error.message}`);
     }
   }
 
@@ -116,20 +192,52 @@ export class DataImportService {
    */
   static async checkForDataUpdate(): Promise<boolean> {
     try {
-      const response = await fetch('/io_connect_china_2025_workshops.json');
-      if (!response.ok) {
+      // iOS Safari兼容性：添加超时和缓存控制
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 5000); // 5秒超时
+      
+      try {
+        const response = await fetch('/io_connect_china_2025_workshops.json', {
+          signal: controller.signal,
+          cache: 'no-cache',
+          headers: {
+            'Cache-Control': 'no-cache',
+            'Pragma': 'no-cache'
+          }
+        });
+        
+        clearTimeout(timeoutId);
+        
+        if (!response.ok) {
+          console.warn('检查更新时无法获取数据文件');
+          return false;
+        }
+        
+        let jsonData;
+        try {
+          const textData = await response.text();
+          jsonData = JSON.parse(textData);
+        } catch (parseError) {
+          console.warn('检查更新时JSON解析失败:', parseError);
+          return false;
+        }
+        
+        // 如果JSON文件包含版本信息
+        if (jsonData && jsonData.version) {
+          const storedVersion = this.getStoredVersion();
+          return storedVersion !== jsonData.version;
+        }
+        
+        return false;
+      } catch (fetchError) {
+        clearTimeout(timeoutId);
+        if (fetchError.name === 'AbortError') {
+          console.warn('检查数据更新超时');
+        } else {
+          console.warn('检查数据更新网络错误:', fetchError);
+        }
         return false;
       }
-      
-      const jsonData = await response.json();
-      
-      // 如果JSON文件包含版本信息
-      if (jsonData.version) {
-        const storedVersion = this.getStoredVersion();
-        return storedVersion !== jsonData.version;
-      }
-      
-      return false;
     } catch (error) {
       console.error('检查数据更新失败:', error);
       return false;

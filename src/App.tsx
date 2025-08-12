@@ -7,6 +7,7 @@ import { DataImportService } from './lib/dataImport';
 import { pwaService } from './lib/pwa';
 import { initializeAudioService } from './lib/audioService';
 import { reminderService } from './lib/reminderService';
+import { checkIOSCompatibility, applyIOSFixes } from './lib/iosSafariCompat';
 import { trackPageView, trackError } from './utils/analytics';
 import Home from './pages/Home';
 import MeetingDetail from './pages/MeetingDetail';
@@ -31,27 +32,92 @@ function App() {
   useEffect(() => {
     const initApp = async () => {
       try {
+        // 首先进行iOS Safari兼容性检测
+        const compatStatus = await checkIOSCompatibility();
+        
+        // 应用兼容性修复
+        await applyIOSFixes(compatStatus);
+        
+        // 如果是iOS Safari且存在兼容性问题，显示警告
+        if (compatStatus.isIOSSafari && (!compatStatus.localStorage || !compatStatus.indexedDB)) {
+          console.warn('检测到iOS Safari兼容性问题，部分功能可能受限');
+          if (compatStatus.isPrivateMode) {
+            console.warn('当前处于隐私浏览模式，数据存储功能受限');
+          }
+        }
+
         // 注册 Service Worker
         if (process.env.NODE_ENV === 'production') {
-          await pwaService.registerServiceWorker();
+          try {
+            if (compatStatus.serviceWorker) {
+              await pwaService.registerServiceWorker();
+            } else if (compatStatus.isIOSSafari) {
+              console.warn('iOS Safari Service Worker支持受限');
+            }
+          } catch (swError) {
+            console.warn('Service Worker注册失败:', swError);
+          }
         }
         
         // 初始化音频服务
-        await initializeAudioService();
+        try {
+          await initializeAudioService();
+        } catch (audioError) {
+          console.warn('音频服务初始化失败:', audioError);
+        }
         
-        // 初始化数据
-        await DataImportService.initializeAppData();
+        // 初始化数据 - iOS Safari兼容性处理
+        try {
+          await DataImportService.initializeAppData();
+        } catch (dataError) {
+          console.error('数据初始化失败:', dataError);
+          // iOS Safari下的降级处理
+          if (dataError.message.includes('网络连接失败') || 
+              dataError.message.includes('JSON') ||
+              dataError.message.includes('IndexedDB')) {
+            console.warn('使用降级模式初始化应用');
+            if (compatStatus.isIOSSafari) {
+              console.warn('iOS Safari兼容性问题导致的数据初始化失败');
+            }
+            // 可以在这里添加离线模式或降级数据
+          }
+        }
+        
         // 初始化应用状态
-        await initializeApp();
+        try {
+          await initializeApp();
+        } catch (storeError) {
+          console.error('应用状态初始化失败:', storeError);
+        }
         
         // 初始化提醒服务
-        const { userPreferences } = useAppStore.getState();
-        reminderService.initialize(userPreferences);
+        try {
+          if (compatStatus.notifications) {
+            const { userPreferences } = useAppStore.getState();
+            reminderService.initialize(userPreferences);
+          } else {
+            console.warn('通知功能在当前环境下不可用');
+          }
+        } catch (reminderError) {
+          console.warn('提醒服务初始化失败:', reminderError);
+        }
         
-        // 检查是否需要显示首次引导
-        const firstTimeGuideCompleted = localStorage.getItem('firstTimeGuideCompleted');
-        if (!firstTimeGuideCompleted) {
-          setShowFirstTimeGuide(true);
+        // 检查是否首次使用 - iOS Safari localStorage兼容性
+        try {
+          if (compatStatus.localStorage) {
+            const hasSeenGuide = localStorage.getItem('hasSeenFirstTimeGuide');
+            if (!hasSeenGuide) {
+              setShowFirstTimeGuide(true);
+            }
+          } else {
+            // localStorage不可用时，默认显示引导
+            console.warn('localStorage不可用，默认显示应用引导');
+            setShowFirstTimeGuide(true);
+          }
+        } catch (storageError) {
+          console.warn('localStorage访问失败，跳过首次使用检查:', storageError);
+          // iOS Safari隐私模式下localStorage可能不可用
+          setShowFirstTimeGuide(true); // 默认显示引导
         }
         
         // 追踪应用启动
@@ -62,6 +128,7 @@ function App() {
       } catch (error) {
         console.error('应用初始化失败:', error);
         trackError(`应用初始化失败: ${error}`, true);
+        // 可以在这里显示错误提示给用户
       }
     };
 

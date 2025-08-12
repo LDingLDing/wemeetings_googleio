@@ -1,14 +1,12 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
+import { List, Switch, Selector, Card, Modal, Toast } from "antd-mobile";
 import {
-  List,
-  Switch,
-  Selector,
-  Card,
-  Modal,
-  Toast,
-} from "antd-mobile";
-import { Bell, HelpCircle, ExternalLink } from "lucide-react";
+  Bell,
+  HelpCircle,
+  ExternalLink,
+  Settings as SettingsIcon,
+} from "lucide-react";
 import { useAppStore } from "../store";
 import { UserPreferences } from "../types";
 // import { useTheme } from "../hooks/useTheme";
@@ -16,6 +14,20 @@ import Layout from "../components/Layout";
 import NotificationStatus from "../components/NotificationStatus";
 import { reminderService } from "../lib/reminderService";
 import { trackUserInteraction, trackPageView } from "../utils/analytics";
+import DebugConsole from "../components/DebugConsole";
+
+// 默认用户偏好设置
+const DEFAULT_USER_PREFERENCES: UserPreferences = {
+  userId: "default",
+  interests: [],
+  defaultReminderTime: 15,
+  notificationEnabled: true,
+  enableSound: true,
+  enableVibration: true,
+  theme: "auto",
+  language: "zh-CN",
+  pageSize: 20,
+};
 
 const Settings = () => {
   const navigate = useNavigate();
@@ -28,68 +40,122 @@ const Settings = () => {
   } = useAppStore();
 
   // const { themeMode, setTheme } = useTheme();
-  const [localPreferences, setLocalPreferences] =
-    useState<UserPreferences>(userPreferences);
+  const [localPreferences, setLocalPreferences] = useState<UserPreferences>(
+    userPreferences || DEFAULT_USER_PREFERENCES
+  );
   const [showClearModal, setShowClearModal] = useState(false);
+  const [showDebugConsole, setShowDebugConsole] = useState(false);
 
   // 初始化时从本地存储加载配置
   useEffect(() => {
     const loadLocalPreferences = () => {
       try {
-        const savedPreferences = localStorage.getItem('userPreferences');
+        // iOS Safari 兼容性检查
+        if (typeof Storage === "undefined") {
+          console.warn("localStorage 不可用，使用默认设置");
+          setLocalPreferences(userPreferences || DEFAULT_USER_PREFERENCES);
+          return;
+        }
+
+        const savedPreferences = localStorage.getItem("userPreferences");
         if (savedPreferences) {
           const parsedPreferences = JSON.parse(savedPreferences);
-          setLocalPreferences(parsedPreferences);
+          // 合并默认值，确保所有字段都存在
+          const mergedPreferences = {
+            ...DEFAULT_USER_PREFERENCES,
+            ...parsedPreferences,
+          };
+          setLocalPreferences(mergedPreferences);
           // 同步到状态管理
-          updateUserPreferences(parsedPreferences);
+          updateUserPreferences(mergedPreferences);
         } else {
-          setLocalPreferences(userPreferences);
+          const defaultPrefs = userPreferences || DEFAULT_USER_PREFERENCES;
+          setLocalPreferences(defaultPrefs);
+          // 保存默认设置到localStorage
+          try {
+            localStorage.setItem(
+              "userPreferences",
+              JSON.stringify(defaultPrefs)
+            );
+          } catch (storageError) {
+            console.warn("无法保存到localStorage:", storageError);
+          }
         }
       } catch (error) {
-        console.error('加载本地配置失败:', error);
-        setLocalPreferences(userPreferences);
+        console.error("加载本地配置失败:", error);
+        const fallbackPrefs = userPreferences || DEFAULT_USER_PREFERENCES;
+        setLocalPreferences(fallbackPrefs);
       }
     };
-    
+
     loadLocalPreferences();
-    
+
     // 追踪页面浏览
-    trackPageView('设置页面', '/settings');
+    trackPageView("设置页面", "/settings");
   }, []);
 
   // 同步本地偏好设置
   useEffect(() => {
-    if (!localStorage.getItem('userPreferences')) {
+    if (userPreferences && typeof Storage !== "undefined") {
+      try {
+        if (!localStorage.getItem("userPreferences")) {
+          const mergedPreferences = {
+            ...DEFAULT_USER_PREFERENCES,
+            ...userPreferences,
+          };
+          setLocalPreferences(mergedPreferences);
+        }
+      } catch (error) {
+        console.warn("localStorage 访问失败:", error);
+        setLocalPreferences(userPreferences || DEFAULT_USER_PREFERENCES);
+      }
+    } else if (userPreferences) {
       setLocalPreferences(userPreferences);
     }
   }, [userPreferences]);
 
   // 即时保存设置
   const handlePreferenceChange = async (newPreferences: UserPreferences) => {
-    const oldPreferences = localPreferences;
-    setLocalPreferences(newPreferences);
+    const oldPreferences = localPreferences || DEFAULT_USER_PREFERENCES;
+    // 确保新设置包含所有必需字段
+    const safeNewPreferences = {
+      ...DEFAULT_USER_PREFERENCES,
+      ...newPreferences,
+    };
+    setLocalPreferences(safeNewPreferences);
     try {
       // 保存到状态管理
-      await updateUserPreferences(newPreferences);
-      // 保存到本地存储
-      localStorage.setItem('userPreferences', JSON.stringify(newPreferences));
+      await updateUserPreferences(safeNewPreferences);
+      // 保存到本地存储（iOS Safari 兼容性处理）
+      if (typeof Storage !== "undefined") {
+        try {
+          localStorage.setItem(
+            "userPreferences",
+            JSON.stringify(safeNewPreferences)
+          );
+        } catch (storageError) {
+          console.warn("localStorage 保存失败:", storageError);
+        }
+      }
       // 更新提醒服务的用户偏好
-      reminderService.setUserPreferences(newPreferences);
-      
+      reminderService.setUserPreferences(safeNewPreferences);
+
       // 追踪设置变更事件
-      const changedSettings = Object.keys(newPreferences).filter(
-        key => oldPreferences[key as keyof UserPreferences] !== newPreferences[key as keyof UserPreferences]
+      const changedSettings = Object.keys(safeNewPreferences).filter(
+        (key) =>
+          oldPreferences[key as keyof UserPreferences] !==
+          safeNewPreferences[key as keyof UserPreferences]
       );
-      
+
       if (changedSettings.length > 0) {
-        trackUserInteraction('settings_change', 'preferences', {
-          changed_settings: changedSettings.join(','),
-          notification_enabled: newPreferences.notificationEnabled,
-          reminder_time: newPreferences.defaultReminderTime
+        trackUserInteraction("settings_change", "preferences", {
+          changed_settings: changedSettings.join(","),
+          notification_enabled: safeNewPreferences.notificationEnabled,
+          reminder_time: safeNewPreferences.defaultReminderTime,
         });
       }
     } catch (error) {
-      console.error('保存设置失败:', error);
+      console.error("保存设置失败:", error);
     }
   };
 
@@ -97,21 +163,20 @@ const Settings = () => {
   const handleClearAllData = async () => {
     try {
       await clearAllData();
-      
+
       // 追踪数据清除事件
-      trackUserInteraction('data_clear', 'settings', {
+      trackUserInteraction("data_clear", "settings", {
         total_meetings: stats.totalMeetings,
-        booked_meetings: stats.bookedMeetings
+        booked_meetings: stats.bookedMeetings,
       });
-      
+
       Toast.show("数据已清除");
       setShowClearModal(false);
     } catch (error) {
       Toast.show("清除失败，请重试");
-      console.error(error)
+      console.error(error);
     }
   };
-
 
   // 提醒时间选项
   const reminderTimeOptions = [
@@ -141,7 +206,6 @@ const Settings = () => {
   //   });
   // };
 
-
   // 获取统计信息
   const getStats = () => {
     const totalMeetings = meetings.length;
@@ -165,7 +229,9 @@ const Settings = () => {
       <div className="bg-gray-50 dark:bg-gray-900 min-h-screen">
         {/* 头部 */}
         <div className="bg-white dark:bg-gray-800 sticky top-0 z-40 border-b border-gray-200 dark:border-gray-700 p-4">
-          <h1 className="text-xl font-bold text-gray-800 dark:text-gray-100">设置</h1>
+          <h1 className="text-xl font-bold text-gray-800 dark:text-gray-100">
+            设置
+          </h1>
         </div>
 
         <div className="p-4 space-y-4">
@@ -173,41 +239,62 @@ const Settings = () => {
           <Card title="📢 提醒设置" className="shadow-sm dark:bg-gray-800">
             <List>
               {/* 通知权限状态 */}
-              <NotificationStatus 
+              <NotificationStatus
                 onPermissionChange={(permission) => {
                   // 根据权限状态自动调整通知开关
-                  if (permission === 'granted' && !localPreferences.notificationEnabled) {
+                  const currentPrefs =
+                    localPreferences || DEFAULT_USER_PREFERENCES;
+                  if (
+                    permission === "granted" &&
+                    !currentPrefs.notificationEnabled
+                  ) {
                     handlePreferenceChange({
-                      ...localPreferences,
+                      ...currentPrefs,
                       notificationEnabled: true,
                     });
-                  } else if (permission === 'denied' && localPreferences.notificationEnabled) {
+                  } else if (
+                    permission === "denied" &&
+                    currentPrefs.notificationEnabled
+                  ) {
                     handlePreferenceChange({
-                      ...localPreferences,
+                      ...currentPrefs,
                       notificationEnabled: false,
                     });
                   }
                 }}
               />
-              
+
               <List.Item
-                prefix={<Bell size={20} className="text-gray-600 dark:text-gray-300" />}
+                prefix={
+                  <Bell
+                    size={20}
+                    className="text-gray-600 dark:text-gray-300"
+                  />
+                }
                 extra={
                   <Switch
-                    checked={localPreferences.notificationEnabled}
-                    onChange={(checked) =>
-                      handlePreferenceChange({
-                        ...localPreferences,
-                        notificationEnabled: checked,
-                      })
+                    checked={
+                      localPreferences?.notificationEnabled ??
+                      DEFAULT_USER_PREFERENCES.notificationEnabled
                     }
+                    onChange={(checked) => {
+                      const currentPrefs =
+                        localPreferences || DEFAULT_USER_PREFERENCES;
+                      handlePreferenceChange({
+                        ...currentPrefs,
+                        notificationEnabled: checked,
+                      });
+                    }}
                   />
                 }
               >
-                <span className="text-gray-800 dark:text-gray-100">开启会议提醒</span>
+                <span className="text-gray-800 dark:text-gray-100">
+                  开启会议提醒
+                </span>
               </List.Item>
 
-              {localPreferences.notificationEnabled && (
+              {(localPreferences?.notificationEnabled ??
+                DEFAULT_USER_PREFERENCES.notificationEnabled) && (
                 <>
                   <List.Item>
                     <div className="space-y-3">
@@ -216,13 +303,18 @@ const Settings = () => {
                       </div>
                       <Selector
                         options={reminderTimeOptions}
-                        value={[localPreferences.defaultReminderTime]}
-                        onChange={(value) =>
+                        value={[
+                          localPreferences?.defaultReminderTime ??
+                            DEFAULT_USER_PREFERENCES.defaultReminderTime,
+                        ]}
+                        onChange={(value) => {
+                          const currentPrefs =
+                            localPreferences || DEFAULT_USER_PREFERENCES;
                           handlePreferenceChange({
-                            ...localPreferences,
+                            ...currentPrefs,
                             defaultReminderTime: value[0] || 15,
-                          })
-                        }
+                          });
+                        }}
                         className="dark:selector-dark"
                         style={{
                           "--border": "1px solid #d9d9d9",
@@ -236,37 +328,48 @@ const Settings = () => {
                     extra={
                       <div className="flex items-center space-x-2">
                         <Switch
-                          checked={localPreferences.enableSound}
-                          onChange={(checked) =>
-                            handlePreferenceChange({
-                              ...localPreferences,
-                              enableSound: checked,
-                            })
+                          checked={
+                            localPreferences?.enableSound ??
+                            DEFAULT_USER_PREFERENCES.enableSound
                           }
+                          onChange={(checked) => {
+                            const currentPrefs =
+                              localPreferences || DEFAULT_USER_PREFERENCES;
+                            handlePreferenceChange({
+                              ...currentPrefs,
+                              enableSound: checked,
+                            });
+                          }}
                         />
-
-              
-
                       </div>
                     }
                   >
-                    <span className="text-gray-800 dark:text-gray-100">提醒声音</span>
+                    <span className="text-gray-800 dark:text-gray-100">
+                      提醒声音
+                    </span>
                   </List.Item>
 
                   <List.Item
                     extra={
                       <Switch
-                        checked={localPreferences.enableVibration}
-                        onChange={(checked) =>
-                          handlePreferenceChange({
-                            ...localPreferences,
-                            enableVibration: checked,
-                          })
+                        checked={
+                          localPreferences?.enableVibration ??
+                          DEFAULT_USER_PREFERENCES.enableVibration
                         }
+                        onChange={(checked) => {
+                          const currentPrefs =
+                            localPreferences || DEFAULT_USER_PREFERENCES;
+                          handlePreferenceChange({
+                            ...currentPrefs,
+                            enableVibration: checked,
+                          });
+                        }}
                       />
                     }
                   >
-                    <span className="text-gray-800 dark:text-gray-100">震动提醒</span>
+                    <span className="text-gray-800 dark:text-gray-100">
+                      震动提醒
+                    </span>
                   </List.Item>
                 </>
               )}
@@ -306,13 +409,17 @@ const Settings = () => {
                       <div className="text-2xl font-bold text-blue-600">
                         {stats.totalMeetings}
                       </div>
-                      <div className="text-gray-600 dark:text-gray-400">总会议数</div>
+                      <div className="text-gray-600 dark:text-gray-400">
+                        总会议数
+                      </div>
                     </div>
                     <div className="bg-green-50 dark:bg-green-900/20 p-3 rounded-lg text-center">
                       <div className="text-2xl font-bold text-green-600 dark:text-green-400">
                         {stats.bookedMeetings}
                       </div>
-                      <div className="text-gray-600 dark:text-gray-400">已预约</div>
+                      <div className="text-gray-600 dark:text-gray-400">
+                        已预约
+                      </div>
                     </div>
                   </div>
                   {/* 移除数据大小显示 */}
@@ -324,16 +431,28 @@ const Settings = () => {
           {/* 帮助与支持 */}
           <Card title="❓ 帮助与支持" className="shadow-sm dark:bg-gray-800">
             <List>
-              <List.Item 
-                prefix={<HelpCircle size={20} className="text-gray-600 dark:text-gray-300" />} 
-                extra={<ExternalLink size={16} className="text-gray-400 dark:text-gray-500" />}
+              <List.Item
+                prefix={
+                  <HelpCircle
+                    size={20}
+                    className="text-gray-600 dark:text-gray-300"
+                  />
+                }
+                extra={
+                  <ExternalLink
+                    size={16}
+                    className="text-gray-400 dark:text-gray-500"
+                  />
+                }
                 clickable
                 onClick={() => {
-                  navigate('/help');
-                  trackUserInteraction('navigation', 'help_center', {});
+                  navigate("/help");
+                  trackUserInteraction("navigation", "help_center", {});
                 }}
               >
-                <span className="text-gray-800 dark:text-gray-100">帮助中心</span>
+                <span className="text-gray-800 dark:text-gray-100">
+                  帮助中心
+                </span>
               </List.Item>
             </List>
           </Card>
@@ -346,7 +465,9 @@ const Settings = () => {
                   <div className="text-sm font-medium text-gray-700 dark:text-gray-300">
                     2025 Google开发者大会会议预约助手
                   </div>
-                  <div className="text-xs text-gray-500 dark:text-gray-400">版本 1.0.0</div>
+                  <div className="text-xs text-gray-500 dark:text-gray-400">
+                    版本 1.1.0
+                  </div>
                   <div className="text-xs text-gray-500 dark:text-gray-400">
                     帮助您管理会议行程，避免时间冲突
                   </div>
@@ -354,8 +475,31 @@ const Settings = () => {
               </List.Item>
             </List>
           </Card>
-
-
+          
+          {/* 调试面板 */}
+          <Card title="🔧 调试面板" className="shadow-sm dark:bg-gray-800">
+            <List>
+              <List.Item
+                prefix={
+                  <SettingsIcon
+                    size={20}
+                    className="text-gray-600 dark:text-gray-300"
+                  />
+                }
+                clickable
+                onClick={() => setShowDebugConsole(true)}
+              >
+                <div className="space-y-1">
+                  <span className="text-gray-800 dark:text-gray-100">
+                    调试控制台
+                  </span>
+                  <div className="text-xs text-gray-500 dark:text-gray-400">
+                    查看数据加载状态和错误日志
+                  </div>
+                </div>
+              </List.Item>
+            </List>
+          </Card>
         </div>
 
         {/* 清除数据确认弹窗 */}
@@ -391,6 +535,12 @@ const Settings = () => {
               onClick: handleClearAllData,
             },
           ]}
+        />
+
+        {/* 调试控制台 */}
+        <DebugConsole
+          visible={showDebugConsole}
+          onClose={() => setShowDebugConsole(false)}
         />
       </div>
     </Layout>
